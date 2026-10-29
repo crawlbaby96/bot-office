@@ -1,5 +1,6 @@
 // Local-dev stand-in for the Vercel platform: runs the same gate as middleware.js, routes /api/* to the
-// same handler modules Vercel deploys, and fires the heartbeat on the same 5-minute cadence as Vercel Cron.
+// same handler modules Vercel deploys, and fires the crons on the same cadence as Vercel Cron (heartbeat every
+// 5 minutes, provider usage hourly).
 import { gate } from '../lib/gate.js';
 
 const ROUTES = {
@@ -9,9 +10,13 @@ const ROUTES = {
   '/api/status': '/api/status.js',
   '/api/usage': '/api/usage.js',
   '/api/cron/heartbeat': '/api/cron/heartbeat.js',
+  '/api/cron/usage': '/api/cron/usage.js',
 };
 
-const HEARTBEAT_MS = 5 * 60 * 1000;
+const CRONS = [
+  { path: '/api/cron/heartbeat', everyMs: 5 * 60 * 1000 },
+  { path: '/api/cron/usage', everyMs: 60 * 60 * 1000 },
+];
 
 function toRequest(req, origin) {
   return new Promise((resolve, reject) => {
@@ -52,20 +57,25 @@ export default function officeApi() {
     configureServer(server) {
       const loadHandler = (path) => server.ssrLoadModule(path);
 
-      const heartbeat = async () => {
+      const runCron = async (path) => {
         if (!process.env.CRON_SECRET) return;
         try {
-          const mod = await loadHandler(ROUTES['/api/cron/heartbeat']);
-          await mod.GET(new Request('http://localhost/api/cron/heartbeat', {
+          const mod = await loadHandler(ROUTES[path]);
+          await mod.GET(new Request(`http://localhost${path}`, {
             headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
           }));
         } catch (err) {
-          server.config.logger.error(`[office] heartbeat failed: ${err.message}`);
+          server.config.logger.error(`[office] ${path} failed: ${err.message}`);
         }
       };
-      const timer = setInterval(heartbeat, HEARTBEAT_MS);
-      server.httpServer?.once('close', () => clearInterval(timer));
-      if (process.env.OFFICE_DEV_HEARTBEAT_ON_START !== '0') setTimeout(heartbeat, 2000);
+      for (const c of CRONS) {
+        const timer = setInterval(() => runCron(c.path), c.everyMs);
+        server.httpServer?.once('close', () => clearInterval(timer));
+      }
+      if (process.env.OFFICE_DEV_HEARTBEAT_ON_START !== '0') {
+        setTimeout(() => runCron('/api/cron/heartbeat'), 2000);
+        setTimeout(() => runCron('/api/cron/usage'), 2500);
+      }
 
       server.middlewares.use(async (req, res, next) => {
         try {
