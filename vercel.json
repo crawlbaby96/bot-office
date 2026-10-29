@@ -4,6 +4,9 @@
   "buildCommand": "npm run db:migrate && npm run build",
   "outputDirectory": "dist",
   "cleanUrls": true,
+  "rewrites": [
+    { "source": "/trade/r/:roomId", "destination": "/trade/room.html" }
+  ],
   "functions": {
     "api/**/*.js": {
       "includeFiles": "config/**"

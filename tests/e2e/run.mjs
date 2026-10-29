@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { CRON_SECRET, launch, login, PUSH_TOKEN, startServer, waitSettled } from './lib.mjs';
+import { runTradeE2e } from './trade.mjs';
 import { startMockProviders } from './mock-providers.mjs';
 
 const OUT = process.argv[2] || '/opt/cursor/artifacts/office';
@@ -460,6 +461,8 @@ try {
   await mpage.waitForTimeout(500);
   await shot(mpage, '10e-mobile-usage-board.png', 'Mobile: the expanded wall usage board');
   await mobile.close();
+
+  await runTradeE2e({ server, check, shot, page, browser, sessionCookie: session.value, login });
 
   check('No browser console errors', summary.consoleErrors.length === 0, summary.consoleErrors.slice(0, 3).join(' / '));
 } catch (err) {

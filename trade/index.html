@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>GVEGAS Gridiron Trade Lounge</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
+</head>
+<body class="trade-page">
+  <div id="stage"></div>
+  <header class="trade-hud">
+    <div>
+      <div class="trade-title">GVEGAS GRIDIRON</div>
+      <div class="trade-sub">Fantasy trade lounge · open to watch</div>
+    </div>
+    <nav class="trade-nav">
+      <a href="/trade/docs">Bot API</a>
+      <a href="/trade/admin">Admin</a>
+    </nav>
+  </header>
+  <section class="trade-lobby">
+    <h2>Trade rooms</h2>
+    <p class="muted empty" id="rooms-empty">No rooms yet. Staff can create one from Admin.</p>
+    <ul id="room-list" class="room-list"></ul>
+  </section>
+  <div class="loading" id="loading">Loading lounge…</div>
+  <script type="module" src="/src/trade/main.js"></script>
+</body>
+</html>
