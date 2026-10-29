@@ -84,9 +84,9 @@ class Agent {
     this.displayState = status?.effectiveState ?? 'idle';
     this.tag.setState(this.displayState);
 
+    // Only animate handoffs pushed recently, so page loads and simulation stop don't replay old ones.
     if (status?.handoffTo && status.updatedAt !== this.lastHandoffKey) {
-      const recent = nowMs - Date.parse(status.updatedAt) < HANDOFF_REPLAY_MS;
-      if (!initial || recent) this.handoffQueue.push(status.handoffTo);
+      if (nowMs - Date.parse(status.updatedAt) < HANDOFF_REPLAY_MS) this.handoffQueue.push(status.handoffTo);
       this.lastHandoffKey = status.updatedAt;
     }
 
