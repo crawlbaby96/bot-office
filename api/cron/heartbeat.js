@@ -1,5 +1,6 @@
 import { checkBearer } from '../../lib/auth.js';
 import { error, json } from '../../lib/http.js';
+import { refreshCloudAgents } from '../../lib/integrations/index.js';
 import { NO_PUSH_WARNING_MS } from '../../lib/rules.js';
 import { getStore } from '../../lib/store/index.js';
 
@@ -26,6 +27,11 @@ export async function GET(request) {
   }
   // `ok` records whether the feed pipeline (store) works; push silence is reported via `detail` and on read.
   const beat = await store.recordHeartbeat({ ok: true, lastPushAt, detail }, now);
+  // Cloud agents ride on the same 5-minute cron. A provider failure is stored as its own snapshot, never as a feed failure.
+  const cloudAgents = await refreshCloudAgents(store, process.env, { now }).catch((err) => {
+    console.error('[office] cloud agents refresh failed', err);
+    return { outcome: 'error' };
+  });
   await store.prune(now).catch((err) => console.error('[office] prune failed', err));
-  return json({ ok: true, heartbeat: beat });
+  return json({ ok: true, heartbeat: beat, cloudAgents: { outcome: cloudAgents.outcome, running: cloudAgents.running ?? null } });
 }

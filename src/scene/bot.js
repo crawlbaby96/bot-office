@@ -111,6 +111,34 @@ export function createBotModel(bot) {
   return parts;
 }
 
+const CONTRACTOR_SHIRT = '#7b8796';
+
+/**
+ * Visitor figure for a Cursor cloud agent: the same blocky person in a work shirt, with a hi-vis orange vest with
+ * reflective stripes, a white safety helmet and a clip-on visitor badge, so contractors never read as roster bots.
+ */
+export function createContractorModel(id) {
+  const parts = createBotModel({ id: `contractor:${id}`, avatarColor: CONTRACTOR_SHIRT, accessory: null });
+  const { root, head, hit } = parts;
+  root.name = `contractor:${id}`;
+  hit.userData = { contractorId: id };
+
+  const vest = matte('#e27a2e');
+  const stripe = matte('#dfe3e6');
+  root.add(mesh(boxGeo(0.45, 0.37, 0.27), vest, 0, HIP_Y + 0.215, 0));
+  for (const y of [HIP_Y + 0.13, HIP_Y + 0.27]) root.add(mesh(boxGeo(0.455, 0.035, 0.275), stripe, 0, y, 0));
+  root.add(mesh(boxGeo(0.1, 0.13, 0.012), '#f1efe8', 0.11, HIP_Y + 0.33, 0.142));
+  root.add(mesh(boxGeo(0.1, 0.03, 0.014), '#3a78b5', 0.11, HIP_Y + 0.38, 0.143));
+
+  const helmet = matte('#eeede8');
+  head.add(mesh(new THREE.SphereGeometry(0.205, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), helmet, 0, 0.16, 0));
+  const brim = mesh(boxGeo(0.3, 0.022, 0.12), helmet, 0, 0.165, 0.2);
+  brim.rotation.x = 0.12;
+  head.add(brim);
+  head.add(mesh(new THREE.CylinderGeometry(0.209, 0.209, 0.03, 24), '#e27a2e', 0, 0.185, 0));
+  return parts;
+}
+
 function boltShape(scale) {
   const s = new THREE.Shape();
   const pts = [[0.1, 1], [-0.45, -0.05], [0, -0.05], [-0.15, -1], [0.45, 0.15], [0.02, 0.15], [0.25, 1]];

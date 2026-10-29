@@ -14,6 +14,7 @@
     <div class="brand">
       <div class="title">Bot Office</div>
       <div class="sub" id="feed-line">Connecting…</div>
+      <div class="sub agents-line" id="agents-line"></div>
     </div>
     <nav class="views" aria-label="Camera">
       <button data-view="office" class="active">Office</button>
@@ -30,8 +31,13 @@
   <footer class="hud hud-bottom">
     <div class="legend" id="legend"></div>
     <button class="simulate" id="simulate" type="button">Simulate Work</button>
-    <div class="usage-chip" id="usage-chip">Usage: no reading yet</div>
+    <button class="usage-chip" id="usage-chip" type="button" aria-controls="usage-panel" aria-expanded="false">Usage: no reading yet</button>
   </footer>
+
+  <section class="usage-panel" id="usage-panel" aria-label="Usage" hidden>
+    <header><span>Usage</span><button type="button" id="usage-panel-close" aria-label="Close usage panel">×</button></header>
+    <div id="usage-panel-rows"></div>
+  </section>
 
   <div class="tooltip" id="tooltip" hidden></div>
   <div class="loading" id="loading">Loading office…</div>

@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { CRON_SECRET, launch, login, PUSH_TOKEN, startServer, waitSettled } from './lib.mjs';
+import { startMockProviders } from './mock-providers.mjs';
 
 const OUT = process.argv[2] || '/opt/cursor/artifacts/office';
 mkdirSync(OUT, { recursive: true });
@@ -27,7 +28,14 @@ const shot = async (page, file, note) => {
   console.log(`shot  ${file}  ${note}`);
 };
 
-const server = await startServer({ port: 5199 });
+// Provider APIs are served by a local mock with the documented response shapes (made-up numbers).
+const mock = await startMockProviders(5299);
+const server = await startServer({ port: 5199, env: mock.env });
+const cron = async (path) => (await fetch(`${server.url}${path}`, { headers: { authorization: `Bearer ${CRON_SECRET}` } })).json();
+const minsAgo = (m) => new Date(Date.now() - m * 60000).toISOString();
+const mockAgent = (n, name, repo, { status = 'ACTIVE', run = 'RUNNING', started = 30 } = {}) => ({ id: `bc-e2e-${n}`, name, repo, status, run, createdAt: minsAgo(started) });
+const ENGINEERING = { x0: -31, x1: -15, z0: -21, z1: -7 };
+const inEngineering = (c) => c.x > ENGINEERING.x0 && c.x < ENGINEERING.x1 && c.z > ENGINEERING.z0 && c.z < ENGINEERING.z1;
 const cli = (script, args) => {
   const env = { ...process.env, OFFICE_URL: server.url, OFFICE_PUSH_TOKEN: PUSH_TOKEN, OFFICE_STRICT: '1' };
   const bin = script.endsWith('.sh') ? 'bash' : process.execPath;
@@ -70,6 +78,9 @@ async function apiChecks() {
   r = await fetch(`${u}/api/cron/heartbeat`, { headers: { authorization: `Bearer ${CRON_SECRET}` } });
   const hb = await r.json();
   check('Cron heartbeat with CRON_SECRET records feed health', r.status === 200 && hb.ok === true, JSON.stringify(hb.heartbeat));
+  check('Heartbeat also fetches cloud agents (none running yet)', hb.cloudAgents?.outcome === 'ok' && hb.cloudAgents.running === 0, JSON.stringify(hb.cloudAgents));
+  r = await fetch(`${u}/api/cron/usage`);
+  check('Usage cron without CRON_SECRET is 401', r.status === 401, String(r.status));
 }
 
 function readPng(path) {
@@ -231,6 +242,118 @@ try {
   const chip = await page.locator('#usage-chip').innerText();
   check('Usage chip shows the pushed reading', chip.includes('62%'), chip.replace(/\n/g, ' '));
 
+  // 6b. Provider usage rows, fetched by the usage cron from the (mock) official APIs.
+  const usageRun = await cron('/api/cron/usage');
+  check('Usage cron fetched Cursor, OpenAI and Anthropic', usageRun.ok && usageRun.providers.every((p) => p.outcome === 'ok'), JSON.stringify(usageRun.providers));
+  check('Usage cron response carries no numbers', !/\d+\.\d+/.test(JSON.stringify(usageRun)));
+  await page.evaluate(() => window.__office.pollNow());
+  await page.waitForTimeout(1200);
+  await shot(page, '06b-usage-board-all-rows.png', 'Usage board: Grok Bot weekly row plus Cursor, OpenAI and Anthropic rows, each with its own as-of time (mock provider APIs)');
+  let rows = await page.evaluate(() => window.__office.usageRows());
+  check('Usage board has Grok Bot + 3 provider rows', rows.map((x) => x.id).join() === 'grok,cursor,openai,anthropic', rows.map((x) => `${x.id}:${x.status}`).join(' '));
+  check('Each provider row shows real fetched values with its own as-of time', rows.slice(1).every((x) => x.status === 'ok' && x.primary.includes('$') && x.asOf.startsWith('As of')), rows.slice(1).map((x) => `${x.primary} | ${x.asOf}`).join(' / '));
+  check('Cursor row sums team spend from the Admin API', rows[1].primary === '$61.01 this billing cycle' && rows[1].secondary.startsWith('$12.11 on-demand'), `${rows[1].primary} | ${rows[1].secondary}`);
+  check('OpenAI and Anthropic rows include token counts', rows[2].secondary.includes('tokens') && rows[3].secondary.includes('tokens'), `${rows[2].secondary} / ${rows[3].secondary}`);
+  check('Grok Bot row unchanged (62% left)', rows[0].primary === '62% left', rows[0].primary);
+
+  // 6c. Failures: OpenAI errors (shown stale since the last good reading), Cursor refuses the key (not connected).
+  mock.setFail({ openai: 500, cursorAdmin: 403 });
+  await cron('/api/cron/usage');
+  mock.setFail({});
+  await page.evaluate(() => window.__office.pollNow());
+  await page.waitForTimeout(1200);
+  await shot(page, '06c-usage-board-stale-and-not-connected.png', 'Usage board after OpenAI returned 500 (stale since last good reading) and Cursor Admin API refused the key with 403 (not connected)');
+  rows = await page.evaluate(() => window.__office.usageRows());
+  const byId = Object.fromEntries(rows.map((x) => [x.id, x]));
+  check('Refused Cursor Admin key shows Not connected and no numbers', byId.cursor.status === 'not_connected' && byId.cursor.primary === 'Not connected' && !byId.cursor.secondary.includes('$'), `${byId.cursor.primary} | ${byId.cursor.secondary}`);
+  check('Failed OpenAI fetch shows the last reading as stale since its time', byId.openai.status === 'stale' && byId.openai.asOf.startsWith('Stale since'), byId.openai.asOf);
+  check('Anthropic row still current', byId.anthropic.status === 'ok', byId.anthropic.asOf);
+  await cron('/api/cron/usage');
+  await page.evaluate(() => window.__office.pollNow());
+
+  // 6d. Cursor cloud agents as contractors at the Engineering hot desks.
+  mock.setAgents([
+    mockAgent(1, 'Add usage rows to the office board', 'bot-office', { started: 50 }),
+    mockAgent(2, 'Fix flaky login test', 'web-app', { run: 'WAITING_FOR_BACKGROUND_WORK', started: 40 }),
+    mockAgent(3, 'Speed up the nightly export job so it streams rows instead of buffering everything', 'data-pipeline', { run: 'CREATING', started: 2 }),
+    mockAgent(4, 'Finished earlier today', 'bot-office', { status: 'IDLE', run: 'FINISHED', started: 200 }),
+  ]);
+  const hb2 = await cron('/api/cron/heartbeat');
+  check('Heartbeat snapshot counts only running (ACTIVE) agents', hb2.cloudAgents.running === 3, JSON.stringify(hb2.cloudAgents));
+  await page.evaluate(() => window.__office.pollNow());
+  await page.evaluate(() => window.__office.view('office'));
+  await page.waitForFunction(() => window.__office.contractors().some((c) => c.moving), null, { timeout: 30000, polling: 100 });
+  await page.waitForTimeout(6000);
+  await shot(page, '06d-contractors-arriving.png', 'Three running cloud agents arrive from the elevator lobby as contractors (hi-vis vest, white helmet, badge)');
+  await waitSettled(page, 150000);
+  await page.evaluate(() => window.__office.frame(-23, 0.6, -14, 19));
+  await page.waitForTimeout(1000);
+  await shot(page, '06e-contractors-engineering.png', 'Contractors at the Engineering hot desks: tags show a short title, the repo name, and a run-state dot');
+  let cs = await page.evaluate(() => window.__office.contractors());
+  check('Running cloud agents appear as contractors; finished ones do not', cs.length === 3 && !cs.some((c) => c.id === 'bc-e2e-4'), cs.map((c) => c.id).join());
+  check('Contractors sit at hot desks inside Engineering', cs.every((c) => c.atDesk && inEngineering(c)), cs.map((c) => `${c.x.toFixed(1)},${c.z.toFixed(1)}`).join(' '));
+  const tags = cs.map((c) => c.tag);
+  check('Contractor tags show a short title and the repo name', tags.some((t) => t.includes('Add usage rows to the off') && t.includes('bot-office')) && tags.some((t) => t.includes('data-pipeline') && t.includes('…')), tags.join(' / '));
+  const officeJson = await page.evaluate(async () => (await fetch('/api/office')).text());
+  check('Office API never exposes prompts, branches, PR links or run results', !/MOCK-PRIVATE|mock-private-branch|pull\/999|cursor\.com\/agents/.test(officeJson));
+  const agentsLine = await page.locator('#agents-line').innerText();
+  check('HUD shows the running count and as-of time', /Cloud agents: 3 running · as of/.test(agentsLine), agentsLine);
+  const cpos = await page.evaluate(() => window.__office.contractorScreenPos('bc-e2e-2', 0.7));
+  await page.mouse.move(cpos.x, cpos.y);
+  await page.waitForTimeout(500);
+  const ctip = await page.locator('#tooltip').innerText();
+  check('Hovering a contractor shows title, repo and run state', ctip.includes('Fix flaky login test') && ctip.includes('Cursor cloud agent · web-app') && ctip.includes('Background work'), ctip.replace(/\n/g, ' | '));
+  await shot(page, '06f-contractor-hover.png', 'Hovering a contractor: short title, repo, run state, start time');
+  await page.mouse.move(5, 450);
+
+  // 6e. Overflow: 8 running, 6 desks.
+  mock.setAgents([
+    ...[1, 2, 3].map((n) => ({ ...mockAgent(n, ['Add usage rows to the office board', 'Fix flaky login test', 'Speed up the nightly export job so it streams rows instead of buffering everything'][n - 1], ['bot-office', 'web-app', 'data-pipeline'][n - 1], { started: 60 - n }), run: 'RUNNING' })),
+    mockAgent(5, 'Upgrade the test runner', 'web-app', { started: 20 }),
+    mockAgent(6, 'Write API docs', 'docs-site', { started: 15 }),
+    mockAgent(7, 'Tidy lint warnings', 'bot-office', { started: 10 }),
+    mockAgent(8, 'Add retry to webhook sender', 'api-server', { started: 5 }),
+    mockAgent(9, 'Bump dependencies', 'api-server', { started: 1 }),
+  ]);
+  await cron('/api/cron/heartbeat');
+  await page.evaluate(() => window.__office.pollNow());
+  await waitSettled(page, 150000);
+  await page.evaluate(() => window.__office.frame(-23, 0.6, -14, 19));
+  await page.waitForTimeout(1000);
+  await shot(page, '06g-contractors-overflow.png', 'Eight running agents: six contractors at the six hot desks, "+2 more cloud agents" overflow label');
+  cs = await page.evaluate(() => window.__office.contractors());
+  const overflow = await page.evaluate(() => window.__office.contractorOverflow());
+  check('Contractors are capped at the 6 hot desks', cs.length === 6 && cs.every((c) => c.atDesk && inEngineering(c)), String(cs.length));
+  check('Overflow is labeled in the office and the HUD', overflow.count === 2 && overflow.text === '+2 more cloud agents' && /8 running, 6 at desks/.test(await page.locator('#agents-line').innerText()), `${overflow.text} | ${await page.locator('#agents-line').innerText()}`);
+
+  // 6f. Leaving: two agents finish; they walk back to the elevator and leave, and overflowed agents take the desks.
+  mock.setAgents([
+    mockAgent(1, 'Add usage rows to the office board', 'bot-office', { status: 'IDLE', run: 'FINISHED', started: 59 }),
+    mockAgent(2, 'Fix flaky login test', 'web-app', { status: 'ARCHIVED', run: 'EXPIRED', started: 58 }),
+    mockAgent(3, 'Speed up the nightly export job so it streams rows instead of buffering everything', 'data-pipeline', { started: 57 }),
+    mockAgent(5, 'Upgrade the test runner', 'web-app', { started: 20 }),
+    mockAgent(6, 'Write API docs', 'docs-site', { started: 15 }),
+    mockAgent(7, 'Tidy lint warnings', 'bot-office', { started: 10 }),
+    mockAgent(8, 'Add retry to webhook sender', 'api-server', { started: 5 }),
+    mockAgent(9, 'Bump dependencies', 'api-server', { started: 1 }),
+  ]);
+  await cron('/api/cron/heartbeat');
+  await page.evaluate(() => window.__office.pollNow());
+  await page.evaluate(() => window.__office.view('office'));
+  await page.waitForFunction(() => window.__office.contractors().filter((c) => c.leaving).length === 2, null, { timeout: 20000, polling: 100 });
+  await page.waitForTimeout(7000);
+  await shot(page, '06h-contractors-leaving.png', 'Two agents finished/expired: their contractors walk back to the elevator while the two overflowed agents arrive');
+  await waitSettled(page, 150000);
+  cs = await page.evaluate(() => window.__office.contractors());
+  check('Finished and expired agents leave the office', cs.length === 6 && !cs.some((c) => c.id === 'bc-e2e-1' || c.id === 'bc-e2e-2') && cs.some((c) => c.id === 'bc-e2e-9'), cs.map((c) => c.id).join());
+
+  mock.setAgents([]);
+  await cron('/api/cron/heartbeat');
+  await page.evaluate(() => window.__office.pollNow());
+  await waitSettled(page, 150000);
+  cs = await page.evaluate(() => window.__office.contractors());
+  check('When no agents are running, every contractor leaves', cs.length === 0 && (await page.evaluate(() => window.__office.contractorOverflow().count)) === 0, String(cs.length));
+
   // 7. Hover tag details.
   await page.evaluate(() => window.__office.view('office'));
   await page.waitForTimeout(800);
@@ -255,12 +378,17 @@ try {
   await shot(page, '09-simulation.png', 'Simulate Work running: busy day played in the browser, Simulation label shown');
   const simLabel = await page.locator('#sim-label').innerText();
   check('Simulation label visible while running', (await page.locator('#sim-label').isVisible()) && simLabel.startsWith('Simulation'), simLabel);
+  const simContractors = await page.evaluate(() => window.__office.contractors().length);
+  const simLine = await page.locator('#agents-line').innerText();
+  check('Simulation also plays contractors, labeled simulated', simContractors > 0 && /simulated/.test(simLine), `${simContractors} contractors; ${simLine}`);
   await page.waitForTimeout(6000);
   const simPosts = posts.slice(postsBefore).filter((u) => u.includes('/api/status') || u.includes('/api/usage'));
   check('Simulation never writes to the status or usage API', simPosts.length === 0, `${simPosts.length} POSTs`);
   await page.click('#simulate');
   await page.waitForTimeout(500);
   check('Stopping simulation hides the label', !(await page.locator('#sim-label').isVisible()));
+  const afterSim = await page.evaluate(() => window.__office.contractors());
+  check('Stopping simulation sends simulated contractors away (live: none running)', afterSim.every((c) => c.leaving), `${afterSim.length} contractors, ${afterSim.filter((c) => c.leaving).length} leaving`);
 
   const simPage = await context.newPage();
   await simPage.goto(`${server.url}/?simulate=1`);
@@ -270,7 +398,13 @@ try {
   await shot(simPage, '09b-simulate-link.png', 'Opened with ?simulate=1');
   await simPage.close();
 
-  // 10. Mobile viewport.
+  // 10. Mobile viewport. Three agents are already running when the phone opens the office.
+  mock.setAgents([
+    mockAgent(1, 'Add usage rows to the office board', 'bot-office', { started: 50 }),
+    mockAgent(2, 'Fix flaky login test', 'web-app', { run: 'WAITING_FOR_BACKGROUND_WORK', started: 40 }),
+    mockAgent(3, 'Write API docs', 'docs-site', { started: 10 }),
+  ]);
+  await cron('/api/cron/heartbeat');
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   await mobile.addCookies(cookies);
   const mpage = await mobile.newPage();
@@ -287,6 +421,22 @@ try {
   const mtip = await mpage.locator('#tooltip').innerText().catch(() => '');
   check('Tap on mobile shows bot details', mtip.includes('Kaptain'), mtip.replace(/\n/g, ' | '));
   await shot(mpage, '10b-mobile-tap.png', 'Mobile: tapping a bot shows its details');
+
+  await mpage.evaluate(() => window.__office.frame(-23, 0.6, -14.5, 21));
+  await mpage.waitForTimeout(1000);
+  await shot(mpage, '10c-mobile-contractors.png', 'Mobile: contractors already running at page load are placed straight at the Engineering hot desks');
+  const mcs = await mpage.evaluate(() => window.__office.contractors());
+  check('Contractors running at page load start at their desks (mobile)', mcs.length === 3 && mcs.every((c) => c.atDesk && !c.moving && inEngineering(c)), mcs.map((c) => c.id).join());
+
+  await mpage.tap('[data-view="board"]');
+  await mpage.waitForTimeout(1500);
+  check('Usage view on a phone opens the usage panel', await mpage.locator('#usage-panel').isVisible());
+  const panel = await mpage.locator('#usage-panel').innerText();
+  check('Usage panel lists all four rows with as-of times', ['Grok Bot', 'Cursor', 'OpenAI API', 'Anthropic API'].every((l) => panel.includes(l)) && (panel.match(/As of/g) || []).length === 4, panel.replace(/\n/g, ' | ').slice(0, 300));
+  await shot(mpage, '10d-mobile-usage-panel.png', 'Mobile: Usage view with the usage panel (all rows readable on a phone)');
+  await mpage.evaluate(() => window.__office.setUsagePanel(false));
+  await mpage.waitForTimeout(500);
+  await shot(mpage, '10e-mobile-usage-board.png', 'Mobile: the expanded wall usage board');
   await mobile.close();
 
   check('No browser console errors', summary.consoleErrors.length === 0, summary.consoleErrors.slice(0, 3).join(' / '));
@@ -296,6 +446,7 @@ try {
 } finally {
   await browser.close();
   server.proc.kill();
+  await mock.close();
   summary.finishedAt = new Date().toISOString();
   summary.passed = summary.checks.every((c) => c.pass);
   writeFileSync(join(OUT, 'e2e-summary.json'), JSON.stringify(summary, null, 2));
