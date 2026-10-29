@@ -182,6 +182,7 @@
   background: rgba(7, 24, 16, 0.85);
   color: var(--g-cream);
 }
+.loading[hidden] { display: none !important; }
 
 .watch-page { overflow: auto; }
 .watch-main {
