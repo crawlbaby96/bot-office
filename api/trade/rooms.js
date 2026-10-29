@@ -1,5 +1,5 @@
-import { json } from '../../../lib/http.js';
-import { getTradeStore } from '../../../lib/trade/index.js';
+import { json } from '../../lib/http.js';
+import { getTradeStore } from '../../lib/trade/index.js';
 
 export async function GET() {
   const trade = await getTradeStore();
