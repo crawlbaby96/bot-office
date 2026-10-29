@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { AREAS, BREAK_TABLES, DEPARTMENTS, LEAD_DESK, LOUNGE_FURNITURE, OFFICE_BOUNDS, OFFICE_ELEVATOR, RESEARCH_SCREENS, ROWS, USAGE_BOARD } from './layout.js';
+import { AREAS, BREAK_TABLES, CONTRACTOR_DESK_XS, DEPARTMENTS, LEAD_DESK, LOUNGE_FURNITURE, OFFICE_BOUNDS, OFFICE_ELEVATOR, RESEARCH_SCREENS, ROWS, USAGE_BOARD } from './layout.js';
 import { box, boxGeo, glass, matte } from './materials.js';
 import {
   armchair, bookshelf, coffeeTable, desk, fridge, kitchen, plant, roundTable, serverRack, sofa, stool,
@@ -127,6 +127,18 @@ export function buildOffice(scene, layout) {
       k.prop = p;
       desks.push(k);
     }
+  }
+
+  // Contractor hot desks in Engineering for Cursor cloud agents, with small signs on the back wall above each column.
+  for (const k of layout.contractors) {
+    const p = desk({ x: k.x, z: k.z });
+    root.add(p.group);
+    k.prop = p;
+  }
+  for (const x of CONTRACTOR_DESK_XS) {
+    const sign = signPlate('CONTRACTORS', { w: 1.9, h: 0.34, bg: '#3b4350', fg: '#c9a25a' });
+    sign.position.set(x, 2.45, z0 + 0.02);
+    root.add(sign);
   }
 
   // Back-wall whiteboards behind row A departments; plants at zone corners.
@@ -284,7 +296,7 @@ export function buildOffice(scene, layout) {
   logo.position.set(-23, 3.8, z0 + 0.02);
   root.add(logo);
 
-  const allDesks = [layout.lead.desk, ...desks, ...layout.hot];
+  const allDesks = [layout.lead.desk, ...desks, ...layout.hot, ...layout.contractors];
 
   return {
     root,

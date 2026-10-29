@@ -7,6 +7,12 @@ export function formatDateTime(iso) {
   return `${d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}, ${time}`;
 }
 
+export function formatDate(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'unknown';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
 export function formatAgo(iso, nowMs = Date.now()) {
   const s = Math.max(0, Math.round((nowMs - Date.parse(iso)) / 1000));
   if (s < 60) return 'just now';

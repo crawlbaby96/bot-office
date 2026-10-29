@@ -9,6 +9,12 @@ const MESSAGES = {
   idle: ['On a break'],
 };
 
+// Simulated contractors use generic titles and placeholder repo names; they are labeled as simulated in the UI.
+const SIM_AGENT_TITLES = ['Fix a flaky test', 'Add an API endpoint', 'Update dependencies', 'Write unit tests', 'Refactor a module', 'Improve error handling', 'Draft a docs page', 'Speed up a slow query'];
+const SIM_REPOS = ['example-app', 'example-api', 'example-docs'];
+const SIM_MAX_RUNNING = 8;
+const SIM_SHOWN = 6;
+
 const DAY_START = 8 * 60 + 30;
 const DAY_END = 18 * 60;
 const SIM_MINUTES_PER_SEC = 3.2;
@@ -34,6 +40,9 @@ export class Simulation {
     this.running = true;
     this.minute = DAY_START;
     this.statuses = {};
+    this.contractors = [];
+    this.contractorSeq = 0;
+    this.nextContractor = DAY_START + 4;
     this.next = new Map();
     for (const b of this.roster) {
       this.statuses[b.id] = this.make(b.id, 'idle');
@@ -83,7 +92,42 @@ export class Simulation {
       }
       this.next.set(b.id, this.minute + (state === 'working' ? 35 + Math.random() * 70 : 18 + Math.random() * 40));
     }
-    return changed;
+    return this.tickContractors() || changed;
+  }
+
+  tickContractors() {
+    let changed = false;
+    if (this.minute >= this.nextContractor) {
+      if (this.contractors.length < SIM_MAX_RUNNING && this.minute < DAY_END - 30) {
+        this.contractors.push({
+          id: `sim-agent-${++this.contractorSeq}`,
+          title: pick(SIM_AGENT_TITLES),
+          repo: pick(SIM_REPOS),
+          state: 'starting',
+          startedAt: new Date().toISOString(),
+          since: this.minute,
+          until: this.minute + 45 + Math.random() * 150,
+        });
+        changed = true;
+      }
+      this.nextContractor = this.minute + 12 + Math.random() * 40;
+    }
+    for (const c of this.contractors) {
+      const next = this.minute - c.since < 5 ? 'starting' : (Math.floor(this.minute / 23) + c.since) % 5 === 0 ? 'waiting' : 'running';
+      if (next !== c.state) {
+        c.state = next;
+        changed = true;
+      }
+    }
+    const before = this.contractors.length;
+    this.contractors = this.contractors.filter((c) => this.minute < c.until);
+    return changed || this.contractors.length !== before;
+  }
+
+  /** Same shape as the live `contractors` view, marked simulated. */
+  contractorView() {
+    const agents = this.contractors.slice(0, SIM_SHOWN).map(({ id, title, repo, state, startedAt }) => ({ id, title, repo, state, startedAt }));
+    return { status: 'ok', simulated: true, running: this.contractors.length, runningAtLeast: false, agents };
   }
 
   clockLabel() {

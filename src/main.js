@@ -2,14 +2,19 @@ import './style.css';
 import * as THREE from 'three';
 import { formatAgo, formatDateTime, STATE_LABEL } from './format.js';
 import { Simulation } from './sim.js';
+import { usageRows } from './usageRows.js';
 import { AgentManager } from './scene/agents.js';
+import { ContractorManager } from './scene/contractors.js';
 import { buildLayout } from './scene/layout.js';
 import { buildOffice } from './scene/office.js';
 import { buildRooftop, buildSky, buildSurroundings } from './scene/rooftop.js';
+import { CONTRACTOR_STATE_LABEL } from './scene/tags.js';
 import { createWorld } from './scene/world.js';
 
 const STATE_COLOR = { working: 'var(--working)', waiting: 'var(--waiting)', error: 'var(--error)', done: 'var(--done)', idle: 'var(--idle)' };
+const CONTRACTOR_COLOR = { running: 'var(--working)', starting: 'var(--contractor)', waiting: 'var(--waiting)', active: 'var(--contractor)' };
 const $ = (id) => document.getElementById(id);
+const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 async function fetchOffice() {
   const res = await fetch('/api/office', { cache: 'no-store', credentials: 'same-origin' });
@@ -33,11 +38,47 @@ async function boot() {
   const layout = buildLayout(roster, lead);
   const office = buildOffice(world.scene, layout);
   const agents = new AgentManager(world.scene, layout, roster, lead);
+  const contractors = new ContractorManager(world.scene, layout);
   const sim = new Simulation(roster, lead);
   const occluders = [];
   world.scene.traverse((o) => o.userData.occluder && occluders.push(o));
 
   const currentStatuses = () => (sim.running ? sim.statuses : live.snap.statuses);
+  const currentContractors = () => (sim.running ? sim.contractorView() : live.snap.contractors);
+
+  function applyContractors() {
+    const v = currentContractors();
+    const ok = v?.status === 'ok';
+    contractors.apply({ list: ok ? v.agents : [], running: ok ? v.running : 0, runningAtLeast: ok && v.runningAtLeast });
+  }
+
+  function contractorLine(v) {
+    if (!v) return 'Cloud agents: not connected';
+    if (v.simulated) return `Cloud agents: ${v.running} simulated`;
+    if (v.status === 'pending') return 'Cloud agents: waiting for the first fetch';
+    if (v.status === 'not_connected') return 'Cloud agents: not connected';
+    if (v.status === 'stale') return `Cloud agents: stale since ${formatDateTime(v.staleSince)}`;
+    const n = v.running === 0 ? 'none running' : `${v.running}${v.runningAtLeast ? '+' : ''} running`;
+    const shown = v.running > v.agents.length ? `, ${v.agents.length} at desks` : '';
+    return `Cloud agents: ${n}${shown} · as of ${clock(v.asOf)}${v.lastFetchFailed ? ' · last fetch failed' : ''}`;
+  }
+
+  function renderUsagePanel(rows) {
+    $('usage-panel-rows').innerHTML = rows.map((r) => `
+      <div class="up-row" data-provider="${r.id}" data-status="${r.status}">
+        <div class="up-label">${escapeHtml(r.label)}<span>${escapeHtml(r.sub)}</span></div>
+        <div class="up-primary">${escapeHtml(r.primary)}</div>
+        <div class="up-secondary">${escapeHtml(r.secondary)}</div>
+        ${r.asOf ? `<div class="up-asof">${escapeHtml(r.asOf)}</div>` : ''}
+      </div>`).join('');
+  }
+  const usagePanel = $('usage-panel');
+  const setUsagePanel = (open) => {
+    usagePanel.hidden = !open;
+    $('usage-chip').setAttribute('aria-expanded', String(open));
+  };
+  $('usage-chip').addEventListener('click', () => setUsagePanel(usagePanel.hidden));
+  $('usage-panel-close').addEventListener('click', () => setUsagePanel(false));
 
   function renderHud() {
     const snap = live.snap;
@@ -64,16 +105,27 @@ async function boot() {
       .join('');
 
     const u = snap.usage;
-    $('usage-chip').innerHTML = u
+    $('usage-chip').innerHTML = (u
       ? `Weekly usage left <b>${u.percentLeft % 1 === 0 ? u.percentLeft.toFixed(0) : u.percentLeft.toFixed(1)}%</b>${u.resetsAt ? ` · resets ${formatDateTime(u.resetsAt)}` : ''}<br/>as of ${formatDateTime(u.readAt)}`
-      : 'Weekly usage: no reading yet';
+      : 'Weekly usage: no reading yet') + '<span class="more">All usage ›</span>';
+
+    const cv = currentContractors();
+    const agentsLine = $('agents-line');
+    agentsLine.textContent = contractorLine(cv);
+    agentsLine.dataset.status = cv?.simulated ? 'sim' : cv?.status ?? 'not_connected';
+    agentsLine.title = cv?.detail ?? '';
 
     $('sim-label').hidden = !sim.running;
   }
 
   function applyLive() {
-    office.usageBoard.set(live.snap.usage);
-    if (!sim.running) agents.apply(live.snap.statuses);
+    const rows = usageRows(live.snap);
+    office.usageBoard.set(rows);
+    renderUsagePanel(rows);
+    if (!sim.running) {
+      agents.apply(live.snap.statuses);
+      applyContractors();
+    }
     renderHud();
   }
 
@@ -102,13 +154,15 @@ async function boot() {
   function setSim(on) {
     if (on) {
       sim.start();
-      agents.speed = 1.7;
+      agents.speed = contractors.speed = 1.7;
       agents.apply(sim.statuses);
+      applyContractors();
     } else {
       sim.stop();
-      agents.speed = 1;
+      agents.speed = contractors.speed = 1;
       agents.clearAllFolders();
       agents.apply(live.snap.statuses);
+      applyContractors();
     }
     simButton.textContent = on ? 'Stop Simulation' : 'Simulate Work';
     simButton.classList.toggle('running', on);
@@ -122,6 +176,8 @@ async function boot() {
     b.addEventListener('click', () => {
       world.goTo(b.dataset.view);
       viewButtons.forEach((x) => x.classList.toggle('active', x === b));
+      // The wall board is too small to read on a phone, so the Usage view also opens the usage panel there.
+      if (b.dataset.view === 'board' && window.innerWidth <= 640) setUsagePanel(true);
     });
   }
 
@@ -145,14 +201,38 @@ async function boot() {
     const rect = world.renderer.domElement.getBoundingClientRect();
     ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(ndc, world.camera);
-    const hit = raycaster.intersectObjects(agents.pickables(), false)[0];
-    return hit?.object.userData.botId ?? null;
+    const hit = raycaster.intersectObjects([...agents.pickables(), ...contractors.pickables()], false)[0];
+    const data = hit?.object.userData;
+    if (data?.contractorId) return `contractor:${data.contractorId}`;
+    return data?.botId ?? null;
+  }
+  function contractorTooltip(id) {
+    const a = contractors.agents.get(id);
+    if (!a) return null;
+    const c = a.contractor;
+    const v = currentContractors();
+    const lines = [];
+    lines.push(`<div class="tt-name">${escapeHtml(c.title)}</div>`);
+    lines.push(`<div class="tt-title">Cursor cloud agent${c.repo ? ` · ${escapeHtml(c.repo)}` : ''}</div>`);
+    const label = a.leaving ? 'Finished, leaving' : CONTRACTOR_STATE_LABEL[c.state] ?? c.state;
+    lines.push(`<div class="tt-state"><i style="background:${a.leaving ? 'var(--idle)' : CONTRACTOR_COLOR[c.state] ?? 'var(--contractor)'}"></i>${escapeHtml(label)}</div>`);
+    const meta = [];
+    if (c.startedAt) meta.push(`Started ${formatAgo(c.startedAt)}`);
+    meta.push(v?.simulated ? 'Simulated' : v?.asOf ? `As of ${clock(v.asOf)}` : '');
+    lines.push(`<div class="tt-meta">${meta.filter(Boolean).join(' · ')}</div>`);
+    return lines.join('');
   }
   function showTooltip(id, x, y) {
     hoverId = id;
     if (!id) {
       tooltip.hidden = true;
       return;
+    }
+    if (id.startsWith('contractor:')) {
+      const html = contractorTooltip(id.slice('contractor:'.length));
+      if (!html) return showTooltip(null);
+      tooltip.innerHTML = html;
+      return placeTooltip(x, y);
     }
     const bot = botsById.get(id);
     const st = currentStatuses()[id];
@@ -171,6 +251,9 @@ async function boot() {
     }
     lines.push(`<div class="tt-meta">${meta.join(' · ')}</div>`);
     tooltip.innerHTML = lines.join('');
+    placeTooltip(x, y);
+  }
+  function placeTooltip(x, y) {
     tooltip.hidden = false;
     const pad = 14;
     const w = tooltip.offsetWidth;
@@ -199,6 +282,7 @@ async function boot() {
     if (sim.running) {
       if (sim.tick(dt)) {
         agents.apply(sim.statuses);
+        applyContractors();
         renderHud();
       }
       hudTimer += dt;
@@ -208,12 +292,13 @@ async function boot() {
       }
     }
     agents.update(dt);
-    agents.updateOcclusion(world.camera, occluders);
+    contractors.update(dt);
+    agents.updateOcclusion(world.camera, occluders, contractors.list());
     updateTagScale();
     declutterTimer += dt;
     if (declutterTimer > 0.25) {
       declutterTimer = 0;
-      requestAnimationFrame(() => agents.declutter(lastScale ?? 1));
+      requestAnimationFrame(() => agents.declutter(lastScale ?? 1, contractors.list()));
     }
   });
   world.start();
@@ -225,7 +310,10 @@ async function boot() {
   window.__office = {
     ready: true,
     refresh,
-    settled: () => agents.settled() && !world.tweening,
+    settled: () => agents.settled() && contractors.settled() && !world.tweening,
+    unsettled: () => [...agents.agents.values(), ...contractors.list()]
+      .filter((a) => a.moving || a.handoffQueue.length || a.leaving || (a.spot && a.spot !== a.desiredSpot()))
+      .map((a) => ({ name: a.bot.name, leaving: !!a.leaving, moving: a.moving, step: a.stepState?.step.type ?? null, queued: a.steps.length, spot: a.spot?.kind ?? null, want: a.desiredSpot().kind })),
     view: (name) => world.goTo(name, { instant: true }),
     frame: (x, y, z, width) => world.goTo({ target: [x, y, z], dir: [0.12, 0.62, 0.78], fitWidth: width, fitHeight: width * 0.62 }, { instant: true }),
     quality: world.quality,
@@ -237,6 +325,26 @@ async function boot() {
       pollTimer = setInterval(refresh, (live.snap.config?.pollSeconds ?? 12) * 1000);
       return refresh();
     },
+    contractors() {
+      return contractors.list().map((a) => ({
+        id: a.contractor.id,
+        x: a.root.position.x,
+        z: a.root.position.z,
+        moving: a.moving,
+        leaving: !!a.leaving,
+        atDesk: a.spot === a.assignment.desk.seat,
+        tag: a.tag.el.textContent,
+        tagVisible: a.tag.obj.visible && !a.occluded,
+      }));
+    },
+    contractorOverflow: () => ({ count: contractors.overflow, text: contractors.overflowLabel.el.textContent }),
+    contractorScreenPos(id, y = 0.8) {
+      const a = contractors.agents.get(id);
+      const p = a.root.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, y, 0)).project(world.camera);
+      return { x: ((p.x + 1) / 2) * window.innerWidth, y: ((1 - p.y) / 2) * window.innerHeight };
+    },
+    usageRows: () => usageRows(live.snap),
+    setUsagePanel,
     agentInfo(id) {
       const a = agents.agents.get(id);
       return { x: a.root.position.x, z: a.root.position.z, moving: a.moving, carrying: a.carrying, state: a.displayState };

@@ -36,7 +36,7 @@ export const AREAS = {
 };
 
 export const RESEARCH_SCREENS = { z: -3.3, xs: [-10.2, -6, -1.8], width: 3.4, height: 1.9, bottom: 1.05 };
-export const USAGE_BOARD = { x: 2, y: 1.45, z: -21.86, width: 5.2, height: 2.6 };
+export const USAGE_BOARD = { x: 2, y: 1.05, z: -21.86, width: 7.2, height: 3.3 };
 export const LEAD_DESK = { x: 25, z: -16, width: 2.6 };
 export const FIRE_PIT = { x: 0, z: -44, r: 0.85 };
 export const ROOF_SEAT_R = 4.4;
@@ -187,6 +187,23 @@ export const ELEVATOR_SPOTS = {
   roof: spot({ floor: 'roof', pos: [ROOF_ELEVATOR.x, ROOF_ELEVATOR.z], facing: FACE_NX, kind: 'elevator', approach: [ROOF_HUB] }),
 };
 
+// Contractor hot desks for Cursor cloud agents: two columns in the free strips on either side of the Engineering
+// desks, three rows each. Contractors arrive and leave through the office elevator. Must match MAX_CONTRACTORS.
+const ENGINEERING = DEPARTMENTS.find((d) => d.name === 'Engineering');
+export const CONTRACTOR_DESK_XS = [ENGINEERING.x0 + 1.7, ENGINEERING.x1 - 1.9];
+export const CONTRACTOR_DESK_ZS = [-11.1, -14.4, -17.7];
+export const CONTRACTOR_OVERFLOW = { x: (ENGINEERING.x0 + ENGINEERING.x1) / 2, z: -10.6 };
+
+function contractorDesks() {
+  const desks = [];
+  for (const deskZ of CONTRACTOR_DESK_ZS) {
+    desks.push(makeDesk({ dx: CONTRACTOR_DESK_XS[0], lane: ENGINEERING.x0 + 0.45, deskZ, corridorZ: ROWS.A.corridorZ, zone: 'Contractors' }));
+    desks.push(makeDesk({ dx: CONTRACTOR_DESK_XS[1], lane: ENGINEERING.x1 - 0.45, deskZ, corridorZ: ROWS.A.corridorZ, zone: 'Contractors' }));
+  }
+  desks.forEach((d, i) => (d.seat.tagLift = (i >> 1) % 2 ? 0.42 : 0));
+  return desks;
+}
+
 export const isRooftopZone = (zone) => !DEPARTMENTS.some((d) => d.name === zone) && zone !== 'Lead corner office';
 
 /**
@@ -230,5 +247,5 @@ export function buildLayout(roster, leadId) {
     }
   }
 
-  return { departments, lead, hot, lounge, roof, assignments };
+  return { departments, lead, hot, lounge, roof, assignments, contractors: contractorDesks() };
 }

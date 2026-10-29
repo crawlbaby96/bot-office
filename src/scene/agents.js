@@ -19,14 +19,14 @@ function angleLerp(a, b, t) {
   return a + d * Math.min(1, t);
 }
 
-class Agent {
-  constructor(bot, assignment, manager) {
+export class Agent {
+  constructor(bot, assignment, manager, { parts, tag } = {}) {
     this.bot = bot;
     this.assignment = assignment;
     this.manager = manager;
-    this.parts = createBotModel(bot);
+    this.parts = parts ?? createBotModel(bot);
     this.root = this.parts.root;
-    this.tag = createTag(bot);
+    this.tag = tag ?? createTag(bot);
     this.tag.obj.position.set(0, TAG_Y, 0);
     this.root.add(this.tag.obj);
     this.status = null;
@@ -201,6 +201,20 @@ class Agent {
         if (s.t >= step.seconds) this.stateDone();
         break;
       }
+      case 'appear':
+      case 'vanish': {
+        s.t += dt;
+        const k = Math.min(1, s.t / 0.35);
+        this.root.scale.setScalar(Math.max(0.001, step.type === 'appear' ? k : 1 - k));
+        this.tag.obj.visible = step.type === 'appear' ? k > 0.5 : k < 0.5;
+        applyPose(this.parts, 'stand');
+        if (k >= 1) {
+          if (step.type === 'appear') this.spot = step.spot;
+          else this.gone = true;
+          this.stateDone();
+        }
+        break;
+      }
       case 'drop': {
         this.carrying = false;
         this.parts.folder.visible = false;
@@ -304,11 +318,11 @@ export class AgentManager {
   }
 
   /** Hide tags whose bot is behind a wall or the tower from the current camera (CSS labels ignore depth). */
-  updateOcclusion(camera, occluders) {
+  updateOcclusion(camera, occluders, extra = []) {
     const cam = camera.getWorldPosition(this._v1 ?? (this._v1 = new THREE.Vector3()));
     const ray = this._ray ?? (this._ray = new THREE.Raycaster());
     const p = this._v2 ?? (this._v2 = new THREE.Vector3());
-    for (const a of this.agents.values()) {
+    for (const a of [...this.agents.values(), ...extra]) {
       a.tag.obj.getWorldPosition(p);
       const dir = p.sub(cam);
       const dist = dir.length();
@@ -324,13 +338,15 @@ export class AgentManager {
 
   /**
    * When tags overlap on screen, the most informative one keeps its name (error > waiting > working > done > idle,
-   * lead first) and the others collapse to just their state badge until the user zooms in. Collision boxes always
-   * use the full-size tag, so the result is a pure function of positions and idle frames stay identical.
+   * lead first, contractors last) and the others collapse to just their state badge until the user zooms in.
+   * Collision boxes always use the full-size tag, so the result is a pure function of positions and idle frames stay
+   * identical.
    */
-  declutter(tagScale = 1) {
+  declutter(tagScale = 1, extra = []) {
     const rank = { error: 0, waiting: 1, working: 2, done: 3, idle: 4 };
+    const rankOf = (a) => a.declutterRank ?? rank[a.displayState];
     const list = [];
-    for (const a of this.agents.values()) {
+    for (const a of [...this.agents.values(), ...extra]) {
       if (a.occluded || !a.tag.obj.visible) continue;
       const el = a.tag.el;
       const r = el.getBoundingClientRect();
@@ -342,7 +358,7 @@ export class AgentManager {
       list.push({ a, rect: { left: cx - w / 2, right: cx + w / 2, top: r.bottom - a.fullTag.h * k, bottom: r.bottom } });
     }
     list.sort((p, q) => (q.a.bot.id === this.leadId) - (p.a.bot.id === this.leadId)
-      || rank[p.a.displayState] - rank[q.a.displayState]
+      || rankOf(p.a) - rankOf(q.a)
       || p.a.bot.name.localeCompare(q.a.bot.name));
     const placed = [];
     for (const { a, rect: r } of list) {
