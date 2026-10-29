@@ -229,6 +229,7 @@ async function boot() {
     view: (name) => world.goTo(name, { instant: true }),
     frame: (x, y, z, width) => world.goTo({ target: [x, y, z], dir: [0.12, 0.62, 0.78], fitWidth: width, fitHeight: width * 0.62 }, { instant: true }),
     quality: world.quality,
+    setShadows: world.setShadows,
     simulating: () => sim.running,
     setSim,
     pollNow() {

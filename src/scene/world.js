@@ -30,7 +30,7 @@ export function createWorld(container) {
   container.appendChild(labels.domElement);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.3, 1600);
+  const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 1, 1400);
 
   const hemi = new THREE.HemisphereLight('#dfe8f1', '#8a7f70', 1.55);
   scene.add(hemi);
@@ -55,7 +55,7 @@ export function createWorld(container) {
   controls.dampingFactor = 0.12;
   controls.screenSpacePanning = true;
   controls.maxPolarAngle = Math.PI * 0.47;
-  controls.minDistance = 3;
+  controls.minDistance = 4;
   controls.maxDistance = 190;
   controls.zoomToCursor = true;
 

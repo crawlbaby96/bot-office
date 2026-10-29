@@ -12,7 +12,12 @@ import { usageBoard } from './usageBoard.js';
 const WALL_H = 4.6;
 const WALL = '#d3cec5';
 
-function floorPlane(x0, x1, z0, z1, material, y = 0.004) {
+// Floor layers are spaced a few centimeters apart so they never depth-fight at overview distances.
+const CARPET_Y = 0.02;
+const RUG_Y = 0.04;
+const LETTER_Y = 0.05;
+
+function floorPlane(x0, x1, z0, z1, material, y = CARPET_Y) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), material);
   m.rotation.x = -Math.PI / 2;
   m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
@@ -20,7 +25,7 @@ function floorPlane(x0, x1, z0, z1, material, y = 0.004) {
   return m;
 }
 
-function lettering(text, { cx, cz, w, h, color, y = 0.012 }) {
+function lettering(text, { cx, cz, w, h, color, y = LETTER_Y }) {
   const tex = carpetLettering(text, { widthM: w, heightM: h, color });
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false }));
   m.rotation.x = -Math.PI / 2;
@@ -77,7 +82,7 @@ export function buildOffice(scene, layout) {
 
   // Slab and base floor.
   root.add(box(x1 - x0 + 0.6, 0.3, z1 - z0 + 0.6, '#9d978e', 0, -0.3, 0, { cast: false }));
-  root.add(floorPlane(x0, x1, z0, z1, matte('#bfb9b0'), 0.001));
+  root.add(floorPlane(x0, x1, z0, z1, matte('#bfb9b0'), 0));
 
   // Department carpets with the department name lettered into the front strip (desks sit behind it).
   for (const d of DEPARTMENTS) {
@@ -90,7 +95,7 @@ export function buildOffice(scene, layout) {
   const lead = AREAS.lead;
   const woodTex = canvasTexture(woodPlanks({ base: '#8f6f53' }), { repeat: [3, 3] });
   root.add(floorPlane(lead.x0, lead.x1 + 1, lead.z0 - 1, lead.z1, new THREE.MeshLambertMaterial({ map: woodTex })));
-  root.add(lettering('LEAD OFFICE', { cx: 25.5, cz: -10.1, w: 8.5, h: 1.3, color: '#a3866b', y: 0.008 }));
+  root.add(lettering('LEAD OFFICE', { cx: 25.5, cz: -10.1, w: 8.5, h: 1.3, color: '#a3866b' }));
   root.add(glassWall(lead.x0, lead.z1, lead.doorX - 0.8, lead.z1));
   root.add(glassWall(lead.doorX + 0.8, lead.z1, x1, lead.z1));
   root.add(glassWall(lead.x0, z0, lead.x0, lead.z1));
@@ -110,7 +115,7 @@ export function buildOffice(scene, layout) {
   root.add(bookshelf({ x: 25, z: -21.6, w: 3.2 }));
   root.add(tallPlant({ x: 30.8, z: -20.6 }));
   root.add(plant({ x: 18, z: -20.5, size: 1.1 }));
-  const rug = floorPlane(22.5, 28.5, -18.5, -13.2, matte('#6b5a4c'), 0.008);
+  const rug = floorPlane(22.5, 28.5, -18.5, -13.2, matte('#6b5a4c'), RUG_Y);
   root.add(rug);
 
   // Department desks.
@@ -200,7 +205,7 @@ export function buildOffice(scene, layout) {
   // Lounge.
   const lg = AREAS.lounge;
   root.add(floorPlane(lg.x0, lg.x1, lg.z0, lg.z1, matte('#8a8275')));
-  root.add(floorPlane(-29.6, -17.2, 12.6, 18.4, matte('#6f7d78'), 0.008));
+  root.add(floorPlane(-29.6, -17.2, 12.6, 18.4, matte('#6f7d78'), RUG_Y));
   for (const s of LOUNGE_FURNITURE.sofas) root.add(sofa(s));
   for (const a of LOUNGE_FURNITURE.armchairs) root.add(armchair(a));
   for (const t of LOUNGE_FURNITURE.tables) root.add(coffeeTable(t));

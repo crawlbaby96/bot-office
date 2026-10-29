@@ -99,7 +99,7 @@ export function buildRooftop(scene) {
   }
   const rug = new THREE.Mesh(new THREE.CircleGeometry(5.6, 40), matte('#7b7468'));
   rug.rotation.x = -Math.PI / 2;
-  rug.position.set(FIRE_PIT.x, ROOF_Y + 0.006, FIRE_PIT.z);
+  rug.position.set(FIRE_PIT.x, ROOF_Y + 0.03, FIRE_PIT.z);
   rug.receiveShadow = true;
   root.add(rug);
 

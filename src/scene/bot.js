@@ -192,11 +192,11 @@ function addAccessory(kind, p) {
     handR.add(band);
     handR.add(mesh(boxGeo(0.04, 0.1, 0.04), '#3a3d42', 0, -0.06, 0.06));
   } else if (k.includes('envelope')) {
-    handR.add(mesh(boxGeo(0.02, 0.17, 0.25), '#ece6d6', 0.02, -0.08, 0.04));
-    const flap1 = mesh(boxGeo(0.022, 0.012, 0.15), '#cfc6b1', 0.03, -0.02, -0.02);
-    flap1.rotation.x = 0.55;
-    const flap2 = mesh(boxGeo(0.022, 0.012, 0.15), '#cfc6b1', 0.03, -0.02, 0.1);
-    flap2.rotation.x = -0.55;
+    handR.add(mesh(boxGeo(0.25, 0.17, 0.02), '#ece6d6', 0, -0.08, 0.09));
+    const flap1 = mesh(boxGeo(0.15, 0.012, 0.022), '#c9bfa8', -0.06, -0.04, 0.1);
+    flap1.rotation.z = -0.55;
+    const flap2 = mesh(boxGeo(0.15, 0.012, 0.022), '#c9bfa8', 0.06, -0.04, 0.1);
+    flap2.rotation.z = 0.55;
     handR.add(flap1, flap2);
   } else if (k.includes('magnifying')) {
     const rim = mesh(new THREE.TorusGeometry(0.075, 0.014, 8, 24), '#3a3d42', 0, 0.12, 0.08);
@@ -213,12 +213,13 @@ function addAccessory(kind, p) {
       p.root.add(mesh(boxGeo(0.012, 0.03, 0.006), '#b9b39c', dx, HIP_Y + 0.17, 0.124));
     }
   } else if (k.includes('clipboard')) {
-    handR.add(mesh(boxGeo(0.02, 0.3, 0.22), '#8a6643', 0.03, -0.06, 0.06));
-    handR.add(mesh(boxGeo(0.022, 0.24, 0.18), '#efede6', 0.035, -0.08, 0.06));
-    handR.add(mesh(boxGeo(0.03, 0.03, 0.08), '#9da2a8', 0.04, 0.08, 0.06));
+    handR.add(mesh(boxGeo(0.22, 0.3, 0.02), '#8a6643', 0, -0.08, 0.09));
+    handR.add(mesh(boxGeo(0.18, 0.24, 0.022), '#efede6', 0, -0.1, 0.092));
+    handR.add(mesh(boxGeo(0.08, 0.03, 0.03), '#9da2a8', 0, 0.06, 0.095));
   } else if (k.includes('book')) {
-    handR.add(mesh(boxGeo(0.06, 0.26, 0.2), '#2f4e84', 0.02, -0.08, 0.04));
-    handR.add(mesh(boxGeo(0.05, 0.24, 0.005), '#ece7da', 0.02, -0.08, 0.142));
+    handR.add(mesh(boxGeo(0.2, 0.26, 0.06), '#2f4e84', 0, -0.08, 0.1));
+    handR.add(mesh(boxGeo(0.005, 0.24, 0.05), '#ece7da', 0.1, -0.08, 0.1));
+    handR.add(mesh(boxGeo(0.12, 0.03, 0.062), '#c9a544', 0, -0.02, 0.1));
   } else if (k.includes('lab coat')) {
     const coat = matte('#e9e8e3');
     p.root.add(mesh(boxGeo(0.46, 0.5, 0.27), coat, 0, HIP_Y + 0.17, -0.005));
@@ -226,16 +227,14 @@ function addAccessory(kind, p) {
     for (const arm of [p.armL, p.armR]) arm.add(mesh(boxGeo(0.14, 0.3, 0.16), coat, 0, -0.14, 0));
     p.root.add(mesh(boxGeo(0.04, 0.05, 0.01), '#4a72bd', 0.12, HIP_Y + 0.3, 0.14));
   } else if (k.includes('shield')) {
-    const sh = mesh(extrude(shieldShape(0.12), 0.025), '#7c8fa3', -0.075, -0.18, 0);
-    sh.rotation.y = -Math.PI / 2;
-    armL.add(sh);
-    const emblem = mesh(boxGeo(0.01, 0.1, 0.03), '#d9d6cc', -0.105, -0.17, 0);
-    armL.add(emblem);
+    armL.add(mesh(extrude(shieldShape(0.13), 0.03), '#4f739c', 0, -0.26, 0.08));
+    armL.add(mesh(boxGeo(0.035, 0.13, 0.01), '#dcd8cc', 0, -0.25, 0.115));
+    armL.add(mesh(boxGeo(0.11, 0.035, 0.01), '#dcd8cc', 0, -0.23, 0.115));
   } else if (k.includes('calendar')) {
-    handR.add(mesh(boxGeo(0.02, 0.22, 0.2), '#efede6', 0.03, -0.07, 0.05));
-    handR.add(mesh(boxGeo(0.022, 0.05, 0.2), '#c0463f', 0.033, 0.035, 0.05));
+    handR.add(mesh(boxGeo(0.2, 0.22, 0.02), '#efede6', 0, -0.09, 0.09));
+    handR.add(mesh(boxGeo(0.2, 0.05, 0.022), '#c0463f', 0, 0.015, 0.091));
     for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
-      handR.add(mesh(boxGeo(0.005, 0.03, 0.04), '#9aa0a6', 0.042, -0.04 - r * 0.05, -0.01 + c * 0.06));
+      handR.add(mesh(boxGeo(0.04, 0.03, 0.005), '#9aa0a6', -0.06 + c * 0.06, -0.06 - r * 0.05, 0.101));
     }
   } else if (k.includes('shoe')) {
     for (const leg of [legL, legR]) {

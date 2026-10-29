@@ -13,10 +13,12 @@ try {
   page.on('pageerror', (e) => console.log('pageerror:', e.message));
   await login(page, server.url);
   await page.waitForTimeout(1500);
+  if (process.env.SHADOWS === '1') await page.evaluate(() => window.__office.setShadows(true));
   for (const v of views) {
-    await page.evaluate((name) => window.__office.view(name), v);
+    if (v.startsWith('frame:')) await page.evaluate((a) => window.__office.frame(...a), v.slice(6).split(',').map(Number));
+    else await page.evaluate((name) => window.__office.view(name), v);
     await page.waitForTimeout(600);
-    await page.screenshot({ path: `${out}/${v}.png` });
+    await page.screenshot({ path: `${out}/${v.replace(/[:,]/g, '_')}.png` });
   }
   console.log('quality', await page.evaluate(() => window.__office.quality));
 } finally {
