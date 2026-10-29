@@ -1,5 +1,5 @@
 // Trade room e2e — public lounge, signed-out room view, admin gated, bot keys unchanged.
-export async function runTradeE2e({ server, check, shot, browser, sessionCookie, login, page }) {
+export async function runTradeE2e({ server, check, shot, browser, sessionCookie }) {
   const adminDenied = await fetch(`${server.url}/api/trade/admin/rooms`);
   check('Trade admin API rejects signed-out requests', adminDenied.status === 401, String(adminDenied.status));
 
@@ -84,10 +84,13 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie,
   check('/trade/admin redirects signed-out visitors to login', adminPage.url().includes('/login'), adminPage.url());
   await adminPage.close();
 
-  await login(page, server.url);
-  const staff = await browser.newPage();
+  const staffCtx = await browser.newContext();
+  await staffCtx.addCookies([
+    { name: 'office_session', value: sessionCookie, url: `${server.url}/` },
+  ]);
+  const staff = await staffCtx.newPage();
   await staff.goto(`${server.url}/trade/admin`);
   await staff.waitForFunction(() => !document.querySelector('#loading')?.offsetParent, null, { timeout: 15000 });
   check('/trade/admin loads for signed-in staff', staff.url().includes('/trade/admin'));
-  await staff.close();
+  await staffCtx.close();
 }
