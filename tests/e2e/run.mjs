@@ -422,7 +422,7 @@ try {
   check('Tap on mobile shows bot details', mtip.includes('Kaptain'), mtip.replace(/\n/g, ' | '));
   await shot(mpage, '10b-mobile-tap.png', 'Mobile: tapping a bot shows its details');
 
-  await mpage.evaluate(() => window.__office.frame(-23, 0.6, -14, 13));
+  await mpage.evaluate(() => window.__office.frame(-23, 0.6, -14.5, 21));
   await mpage.waitForTimeout(1000);
   await shot(mpage, '10c-mobile-contractors.png', 'Mobile: contractors already running at page load are placed straight at the Engineering hot desks');
   const mcs = await mpage.evaluate(() => window.__office.contractors());

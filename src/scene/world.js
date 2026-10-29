@@ -7,7 +7,7 @@ import { setMaxAnisotropy } from './textures.js';
 const VIEWS = {
   office: { target: [0.5, 0, 1.5], dir: [0.1, 0.64, 0.76], fitWidth: 70, fitHeight: 50, portrait: { target: [0, 0, -6], dir: [0.05, 0.86, 0.5] } },
   rooftop: { target: [2, ROOF_Y + 2, -50], dir: [0.1, 0.34, 0.93], fitWidth: 34, fitHeight: 22 },
-  board: { target: [USAGE_BOARD.x, USAGE_BOARD.y + USAGE_BOARD.height / 2, USAGE_BOARD.z], dir: [0, 0.18, 1], fitWidth: USAGE_BOARD.width + 1.2, fitHeight: USAGE_BOARD.height + 1.1 },
+  board: { target: [USAGE_BOARD.x, USAGE_BOARD.y + USAGE_BOARD.height / 2, USAGE_BOARD.z], dir: [0, 0.18, 1], fitWidth: USAGE_BOARD.width + 1.2, fitHeight: USAGE_BOARD.height + 1.1, portrait: { fitWidth: (USAGE_BOARD.width + 0.4) / 0.78 } },
   lead: { target: [24, 0.6, -14.2], dir: [-0.2, 0.75, 0.62], fitWidth: 18, fitHeight: 13.5 },
 };
 
