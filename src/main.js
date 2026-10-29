@@ -104,6 +104,16 @@ async function boot() {
       .map(([k, n]) => `<span><i style="background:${STATE_COLOR[k]}"></i>${n} ${STATE_LABEL[k].toLowerCase()}</span>`)
       .join('');
 
+    const needsBtn = $('needs-chris');
+    const waitingN = counts.waiting;
+    if (waitingN > 0) {
+      needsBtn.hidden = false;
+      needsBtn.textContent = `${waitingN === 1 ? '1 bot needs you' : `${waitingN} bots need you`}${sim.running ? ' (simulated)' : ''}`;
+      needsBtn.dataset.simulated = sim.running ? '1' : '0';
+    } else {
+      needsBtn.hidden = true;
+    }
+
     const u = snap.usage;
     $('usage-chip').innerHTML = (u
       ? `Weekly usage left <b>${u.percentLeft % 1 === 0 ? u.percentLeft.toFixed(0) : u.percentLeft.toFixed(1)}%</b>${u.resetsAt ? ` · resets ${formatDateTime(u.resetsAt)}` : ''}<br/>as of ${formatDateTime(u.readAt)}`
@@ -169,6 +179,11 @@ async function boot() {
     renderHud();
   }
   simButton.addEventListener('click', () => setSim(!sim.running));
+
+  $('needs-chris').addEventListener('click', () => {
+    world.goTo('chris');
+    viewButtons.forEach((x) => x.classList.toggle('active', x.dataset.view === 'chris'));
+  });
 
   // Camera quick views.
   const viewButtons = [...document.querySelectorAll('[data-view]')];
@@ -245,7 +260,10 @@ async function boot() {
     const meta = [];
     if (!st) meta.push('No status pushed yet');
     else {
-      if (st.stale) meta.push('Working status older than 10 min, shown as idle');
+      if (st.stale) {
+        if (st.state === 'working') meta.push('Working status older than 10 min, shown as idle');
+        else if (st.state === 'waiting') meta.push('Waiting status older than 48 h, shown as idle');
+      }
       if (st.handoffTo && botsById.get(st.handoffTo)) meta.push(`Handed off to ${escapeHtml(botsById.get(st.handoffTo).name)}`);
       meta.push(st.simulated ? 'Simulated' : `Updated ${formatAgo(st.updatedAt)}`);
     }
@@ -347,8 +365,17 @@ async function boot() {
     setUsagePanel,
     agentInfo(id) {
       const a = agents.agents.get(id);
-      return { x: a.root.position.x, z: a.root.position.z, moving: a.moving, carrying: a.carrying, state: a.displayState };
+      return {
+        x: a.root.position.x,
+        z: a.root.position.z,
+        moving: a.moving,
+        carrying: a.carrying,
+        state: a.displayState,
+        spotKind: a.spot?.kind ?? null,
+        wantKind: a.desiredSpot().kind,
+      };
     },
+    waitingCount: () => roster.filter((b) => (currentStatuses()[b.id]?.effectiveState ?? 'idle') === 'waiting').length,
     screenPos(id, y = 0.8) {
       const a = agents.agents.get(id);
       const p = a.root.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, y, 0)).project(world.camera);

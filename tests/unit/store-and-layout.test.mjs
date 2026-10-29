@@ -70,3 +70,17 @@ test('routes connect every desk, idle seat and delivery spot, with an elevator r
   }
   assert.ok(ELEVATOR_SPOTS.office && ELEVATOR_SPOTS.roof);
 });
+
+test('routes reach Chris waiting spots from every desk and idle seat', () => {
+  const roster = JSON.parse(readFileSync('config/roster.json', 'utf8'));
+  const layout = buildLayout(roster.bots, roster.lead);
+  const wait = layout.chris.waiting[0];
+  for (const b of roster.bots) {
+    const a = layout.assignments.get(b.id);
+    const fromDesk = route(a.desk.seat, wait);
+    assert.ok(fromDesk.length >= 1);
+    assert.deepEqual(fromDesk.at(-1).points.at(-1), wait.pos);
+    const fromIdle = route(a.idle, wait);
+    assert.deepEqual(fromIdle.at(-1).points.at(-1), wait.pos);
+  }
+});

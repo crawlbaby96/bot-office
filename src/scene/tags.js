@@ -16,9 +16,32 @@ export function createTag(bot) {
   return {
     obj,
     el,
-    setState(state) {
+    setState(state, { message, simulated } = {}) {
       el.dataset.state = state;
+      el.classList.toggle('simulated', !!simulated);
       badge.textContent = state === 'waiting' ? '?' : state === 'done' ? '✓' : '';
+      let needs = el.querySelector('.needs');
+      let wmsg = el.querySelector('.wmsg');
+      if (state === 'waiting') {
+        if (!needs) {
+          needs = document.createElement('span');
+          needs.className = 'needs';
+          el.insertBefore(needs, name);
+        }
+        needs.textContent = 'Needs Chris';
+        const text = String(message ?? '').trim();
+        if (text) {
+          if (!wmsg) {
+            wmsg = document.createElement('span');
+            wmsg.className = 'wmsg';
+            el.append(wmsg);
+          }
+          wmsg.textContent = text.length > 44 ? `${text.slice(0, 43).trimEnd()}…` : text;
+        } else if (wmsg) wmsg.remove();
+      } else {
+        needs?.remove();
+        wmsg?.remove();
+      }
     },
   };
 }

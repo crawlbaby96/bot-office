@@ -48,6 +48,17 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #c9cfd4; col
 }
 .tag[data-state="error"] .badge { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--error); box-shadow: 0 0 0 2px rgba(201, 86, 77, 0.25); }
 .tag[data-state="done"] .badge { display: inline-block; color: var(--done); font-size: 10px; font-weight: 700; line-height: 1; }
+.tag[data-state="waiting"] { flex-wrap: wrap; max-width: calc(168px * var(--tag-scale)); white-space: normal; }
+.tag[data-state="waiting"] .needs {
+  font-size: calc(9px * var(--tag-scale)); font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+  color: #2a2110; background: var(--waiting); border-radius: 4px; padding: 0 4px; line-height: 1.35;
+}
+.tag[data-state="waiting"] .wmsg {
+  flex: 0 0 100%; font-size: calc(9.5px * var(--tag-scale)); color: rgba(236, 240, 244, 0.78); line-height: 1.3;
+  padding-left: 2px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tag[data-state="waiting"].declutter .needs, .tag[data-state="waiting"].declutter .wmsg { display: none; }
+.tag.simulated[data-state="waiting"] .needs::after { content: " · sim"; font-weight: 600; text-transform: none; }
 
 .tag.contractor { background: rgba(48, 38, 28, 0.42); color: rgba(240, 232, 222, 0.8); }
 .tag.contractor .repo { color: rgba(214, 206, 196, 0.62); }
@@ -63,7 +74,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #c9cfd4; col
 .hud-top { top: 0; }
 .hud-bottom { bottom: 0; align-items: flex-end; gap: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 
-.brand, .views, .legend, .usage-chip, .banner, .sim-label, .tooltip {
+.brand, .views, .legend, .usage-chip, .banner, .sim-label, .tooltip, .needs-chris {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
@@ -94,6 +105,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #c9cfd4; col
   padding: 8px 14px; font-size: 13px; color: #f2d7b8; border-color: rgba(209, 150, 90, 0.5); background: rgba(60, 40, 22, 0.82);
   max-width: min(640px, calc(100vw - 24px));
 }
+.needs-chris {
+  position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 7;
+  font: inherit; font-size: 13px; font-weight: 650; color: #2a2110; cursor: pointer; padding: 8px 16px;
+  border-color: rgba(209, 170, 90, 0.55); background: rgba(209, 170, 90, 0.92); letter-spacing: 0.02px;
+}
+.needs-chris:hover { background: rgba(222, 186, 110, 0.96); }
+.needs-chris[hidden] { display: none; }
+.banner:not([hidden]) ~ .needs-chris { top: 104px; }
 .sim-label {
   position: fixed; left: 50%; bottom: 66px; transform: translateX(-50%); z-index: 6;
   padding: 4px 10px; font-size: 12px; color: #f0dcae; border-color: rgba(209, 170, 90, 0.45); letter-spacing: 0.3px;
@@ -157,6 +176,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #c9cfd4; col
   .usage-chip { position: fixed; top: 70px; right: 8px; font-size: 11px; max-width: 200px; padding: 5px 8px; }
   .usage-panel { top: 136px; bottom: auto; right: 8px; max-height: calc(100vh - 210px); }
   .banner { top: 118px; font-size: 12px; }
+  .needs-chris { top: 118px; font-size: 12px; padding: 7px 12px; max-width: calc(100vw - 16px); }
+  .banner:not([hidden]) ~ .needs-chris { top: 158px; }
   .simulate { padding: 8px 14px; font-size: 13px; }
   .sim-label { bottom: 58px; }
   .tooltip { max-width: 240px; }

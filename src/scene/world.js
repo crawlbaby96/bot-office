@@ -9,6 +9,7 @@ const VIEWS = {
   rooftop: { target: [2, ROOF_Y + 2, -50], dir: [0.1, 0.34, 0.93], fitWidth: 34, fitHeight: 22 },
   board: { target: [USAGE_BOARD.x, USAGE_BOARD.y + USAGE_BOARD.height / 2, USAGE_BOARD.z], dir: [0, 0.18, 1], fitWidth: USAGE_BOARD.width + 1.2, fitHeight: USAGE_BOARD.height + 1.1, portrait: { fitWidth: (USAGE_BOARD.width + 0.4) / 0.78 } },
   lead: { target: [24, 0.6, -14.2], dir: [-0.2, 0.75, 0.62], fitWidth: 18, fitHeight: 13.5 },
+  chris: { target: [22, 0.75, 15.5], dir: [0.08, 0.68, 0.72], fitWidth: 16, fitHeight: 12, portrait: { target: [21, 0.5, 14], dir: [0.05, 0.82, 0.55], fitWidth: 14 } },
 };
 
 export function createWorld(container) {
