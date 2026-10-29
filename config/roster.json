@@ -1,0 +1,24 @@
+{
+  "lead": "dd72c785-8ec9-4094-b40f-f732f8b70a9b",
+  "colorNote": "avatarColor is each bot's real profile setting; null means none set, render neutral gray.",
+  "bots": [
+    {"id":"dd72c785-8ec9-4094-b40f-f732f8b70a9b","name":"Grok Bot","title":"Lead","avatarColor":null,"zone":"Lead corner office","accessory":"headset"},
+    {"id":"b5b023b7-667c-4b41-b666-db65b89b0017","name":"Forge","title":"Developer","avatarColor":null,"zone":"Engineering","accessory":"hard hat"},
+    {"id":"e93355c1-ae93-4892-8339-60836c64011f","name":"Sparky","title":"CTO","avatarColor":"cyan","zone":"Engineering","accessory":"lightning-bolt badge"},
+    {"id":"f5cb3288-e072-477f-8d18-1a905d0e3808","name":"The Plug","title":"Git setup","avatarColor":"yellow","zone":"Engineering","accessory":"ethernet cable coil"},
+    {"id":"0e88d8e8-b127-4d78-af38-4c09eaaf9473","name":"Debra Credit","title":"Accounting Manager","avatarColor":"violet","zone":"Finance","accessory":"green visor"},
+    {"id":"f81672e5-019d-46c4-bce5-451f3948ba15","name":"Kaptain","title":"Chief Karbon Officer","avatarColor":"green","zone":"Finance","accessory":"captain's hat"},
+    {"id":"aa1063cf-4ccc-4988-b1c2-25e4cde889aa","name":"Lead Zepplin","title":"President of Business Development","avatarColor":"brown","zone":"Sales","accessory":"briefcase"},
+    {"id":"168ffbce-60c7-4a06-91d6-3fda6071c8c5","name":"Spara-ganda","title":"Chief Marketing Officer","avatarColor":"magenta","zone":"Marketing","accessory":"megaphone"},
+    {"id":"83ff3335-c2f8-481e-9ff4-8a6fcbce2ebd","name":"Newsletter Bot","title":"Marketing Intern","avatarColor":"magenta","zone":"Marketing","accessory":"envelope"},
+    {"id":"3a11c6d8-bac5-4b7a-a408-fa7b5bb2b6e4","name":"Sift","title":"Analyst","avatarColor":null,"zone":"Research","accessory":"magnifying glass"},
+    {"id":"2ccf00e7-aebf-4d1b-9a3c-29fc09aef63c","name":"Altman Husk","title":"Chief AI Officer","avatarColor":"gray","zone":"Research","accessory":"glowing chip"},
+    {"id":"4623a0aa-4a36-4cd7-8f01-91d48b7ed54a","name":"Granola Bot","title":"Meeting Head","avatarColor":"gray","zone":"Operations","accessory":"clipboard"},
+    {"id":"3e7af9ec-e151-4654-b817-55cc0ec5df29","name":"Nexus","title":"Unassigned","avatarColor":"red","zone":"Rooftop","accessory":"book"},
+    {"id":"af9cab2e-55fc-4db0-9ba5-696a7a3f9720","name":"Dr. Eggbot","title":"Bot designer","avatarColor":"red","zone":"Rooftop","accessory":"lab coat"},
+    {"id":"a37e634f-9292-4f59-bf97-c00d5c929c78","name":"Scrubber","title":"Spam scrubber","avatarColor":null,"zone":"Rooftop","accessory":"shield"},
+    {"id":"bef7ee9e-ecf4-4876-a5b6-8fff130480d2","name":"Scotty","title":"Personal assistant","avatarColor":null,"zone":"Rooftop","accessory":"calendar"},
+    {"id":"b9513592-b959-4608-ade5-272257528673","name":"Mile Marker","title":"Running coach","avatarColor":null,"zone":"Rooftop","accessory":"running shoes"},
+    {"id":"50f1f2c2-ed89-4ea3-9b72-74d118315326","name":"Pickolas Cage","title":"Sports Sharp","avatarColor":"orange","zone":"Rooftop","accessory":"ball cap"}
+  ]
+}

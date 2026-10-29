@@ -1,0 +1,35 @@
+{
+  "name": "bot-office",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Live 3D virtual office for Chris's Grok Bot team",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "test": "node --test tests/unit/*.test.mjs",
+    "test:pg": "node --test tests/pg/*.test.mjs",
+    "e2e": "node tests/e2e/run.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crawlbaby96/bot-office.git"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "pixelmatch": "^8.0.0",
+    "playwright": "^1.64.1",
+    "pngjs": "^7.0.0",
+    "postgres": "^3.4.9",
+    "vite": "^8.3.5"
+  }
+}
