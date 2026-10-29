@@ -1,6 +1,7 @@
 import { gate } from './lib/gate.js';
 
 export const config = {
+  runtime: 'nodejs',
   matcher: ['/((?!favicon\\.svg$).*)'],
 };
 

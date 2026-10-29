@@ -5,7 +5,7 @@
   "description": "Live 3D virtual office for Chris's Grok Bot team",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "vite",
