@@ -4,7 +4,7 @@ import { ROOF_Y } from './layout.js';
 import { route } from './nav.js';
 import { createTag } from './tags.js';
 
-const DESK_STATES = new Set(['working', 'waiting', 'error']);
+const DESK_STATES = new Set(['working', 'error']);
 const WALK_SPEED = 2.4;
 const TURN_RATE = 10;
 const TAG_Y = 1.58;
@@ -41,7 +41,16 @@ export class Agent {
   }
 
   desiredSpot() {
-    return DESK_STATES.has(this.displayState) ? this.assignment.desk.seat : this.assignment.idle;
+    // Cloud contractors reuse Agent; their "waiting" pose means background work at the desk, not Chris.
+    if (this.contractor) {
+      if (this.leaving || this.displayState === 'idle') return this.assignment.idle;
+      return this.assignment.desk.seat;
+    }
+    if (this.displayState === 'waiting') {
+      return this.manager.waitingSpotFor(this.bot.id) ?? this.manager.layout.chris.waiting[0];
+    }
+    if (DESK_STATES.has(this.displayState)) return this.assignment.desk.seat;
+    return this.assignment.idle;
   }
 
   placeAt(spot) {
@@ -82,7 +91,7 @@ export class Agent {
   setStatus(status, { initial, nowMs }) {
     this.status = status;
     this.displayState = status?.effectiveState ?? 'idle';
-    this.tag.setState(this.displayState);
+    this.tag.setState(this.displayState, { message: status?.message, simulated: status?.simulated });
 
     // Only animate handoffs pushed recently, so page loads and simulation stop don't replay old ones.
     if (status?.handoffTo && status.updatedAt !== this.lastHandoffKey) {
@@ -254,6 +263,7 @@ export class AgentManager {
     this.speed = 1;
     this.deskBySeat = new Map();
     this.folders = new Map();
+    this.waitingSpotByBot = new Map();
     this.agents = new Map();
     this.group = new THREE.Group();
     this.group.name = 'agents';
@@ -268,8 +278,28 @@ export class AgentManager {
     this.initialized = false;
   }
 
+  waitingSpotFor(botId) {
+    return this.waitingSpotByBot.get(botId) ?? null;
+  }
+
+  assignWaitingSpots(statuses) {
+    const spots = this.layout.chris.waiting;
+    const waiting = [...this.agents.values()]
+      .filter((a) => (statuses[a.bot.id]?.effectiveState ?? 'idle') === 'waiting')
+      .sort((a, b) => {
+        const ta = Date.parse(statuses[a.bot.id]?.updatedAt ?? 0);
+        const tb = Date.parse(statuses[b.bot.id]?.updatedAt ?? 0);
+        return ta - tb || a.bot.name.localeCompare(b.bot.name);
+      });
+    this.waitingSpotByBot = new Map();
+    waiting.forEach((a, i) => {
+      this.waitingSpotByBot.set(a.bot.id, spots[Math.min(i, spots.length - 1)]);
+    });
+  }
+
   apply(statuses, nowMs = Date.now()) {
     const initial = !this.initialized;
+    this.assignWaitingSpots(statuses);
     for (const [id, agent] of this.agents) {
       const prev = agent.status;
       const next = statuses[id] ?? null;

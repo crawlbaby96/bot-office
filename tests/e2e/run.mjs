@@ -214,9 +214,24 @@ try {
   await page.evaluate(() => window.__office.pollNow());
   await waitSettled(page, 120000);
   await page.waitForTimeout(800);
-  await shot(page, '04-live-status.png', 'After pushing real statuses with scripts/office-status.sh and .mjs: working bots at desks (rooftop bot at a hot desk), waiting = ?, error = red dot');
+  await shot(page, '04-live-status.png', 'After pushing real statuses: working bots at desks, waiting bot walks to Chris\'s exec office');
   const legend = await page.locator('#legend').innerText();
   check('Legend counts reflect pushed statuses', /7 working/.test(legend) && /1 waiting/.test(legend) && /1 error/.test(legend) && /1 done/.test(legend), legend.replace(/\n/g, ' '));
+  const debraWait = await page.evaluate((id) => window.__office.agentInfo(id), byName['Debra Credit']);
+  check('Waiting bot queues at Chris\'s office', debraWait.state === 'waiting' && debraWait.spotKind === 'chris-wait' && debraWait.z < 16, JSON.stringify(debraWait));
+  check('Needs-you HUD shows one waiting bot', (await page.locator('#needs-chris').innerText()) === '1 bot needs you');
+  await page.evaluate(() => window.__office.view('chris'));
+  await page.waitForTimeout(1200);
+  await shot(page, '04b-waiting-at-chris.png', 'Debra Credit at Chris\'s exec office with Needs Chris tag and status line');
+  cli('office-status.mjs', [byName.Kaptain, 'waiting', 'Waiting on Chris for access']);
+  await page.evaluate(() => window.__office.pollNow());
+  await waitSettled(page, 120000);
+  check('HUD counts two bots needing Chris', (await page.evaluate(() => window.__office.waitingCount())) === 2);
+  await page.evaluate(() => window.__office.view('chris'));
+  await page.waitForTimeout(1000);
+  await shot(page, '04c-multiple-waiting.png', 'Two bots queued outside Chris\'s office at distinct spots');
+  await page.click('#needs-chris');
+  await page.waitForTimeout(900);
 
   // 5. Handoff: Sparky finishes and carries a folder to the lead's office.
   cli('office-status.sh', [byName.Sparky, 'done', 'Review finished, handing off', LEAD]);
@@ -355,7 +370,7 @@ try {
   check('When no agents are running, every contractor leaves', cs.length === 0 && (await page.evaluate(() => window.__office.contractorOverflow().count)) === 0, String(cs.length));
 
   // 7. Hover tag details.
-  await page.evaluate(() => window.__office.view('office'));
+  await page.evaluate(() => window.__office.view('chris'));
   await page.waitForTimeout(800);
   const pos = await page.evaluate((id) => window.__office.screenPos(id, 0.7), byName['Debra Credit']);
   await page.mouse.move(pos.x, pos.y);
@@ -381,6 +396,11 @@ try {
   const simContractors = await page.evaluate(() => window.__office.contractors().length);
   const simLine = await page.locator('#agents-line').innerText();
   check('Simulation also plays contractors, labeled simulated', simContractors > 0 && /simulated/.test(simLine), `${simContractors} contractors; ${simLine}`);
+  await page.waitForFunction(() => window.__office.waitingCount() > 0, null, { timeout: 60000, polling: 500 });
+  check('Simulation sends waiting bots to Chris\'s office', (await page.evaluate(() => window.__office.waitingCount())) > 0);
+  await page.evaluate(() => window.__office.view('chris'));
+  await page.waitForTimeout(800);
+  await shot(page, '09c-simulation-waiting-chris.png', 'Simulate Work: waiting bots at Chris\'s office with simulated needs-you HUD');
   await page.waitForTimeout(6000);
   const simPosts = posts.slice(postsBefore).filter((u) => u.includes('/api/status') || u.includes('/api/usage'));
   check('Simulation never writes to the status or usage API', simPosts.length === 0, `${simPosts.length} POSTs`);
@@ -414,7 +434,9 @@ try {
   await mpage.waitForTimeout(4000);
   const q2 = await mpage.evaluate(() => window.__office.quality);
   check('Renderer pixel ratio equals devicePixelRatio (mobile, DPR 3)', q2.pixelRatio === 3 && q2.devicePixelRatio === 3, JSON.stringify(q2));
-  await shot(mpage, '10-mobile-390x844.png', 'Mobile 390x844 (DPR 3)');
+  await shot(mpage, '10-mobile-390x844.png', 'Mobile 390x844 (DPR 3) with needs-you HUD');
+  check('Mobile HUD shows bots need you count', (await mpage.locator('#needs-chris').innerText()).includes('need you'));
+  await shot(mpage, '10f-mobile-needs-chris.png', 'Mobile: tap-friendly needs-you HUD while two bots wait on Chris');
   const mpos = await mpage.evaluate((id) => window.__office.screenPos(id, 0.7), byName.Kaptain);
   await mpage.touchscreen.tap(mpos.x, mpos.y);
   await mpage.waitForTimeout(600);

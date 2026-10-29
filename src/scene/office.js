@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { AREAS, BREAK_TABLES, CONTRACTOR_DESK_XS, DEPARTMENTS, LEAD_DESK, LOUNGE_FURNITURE, OFFICE_BOUNDS, OFFICE_ELEVATOR, RESEARCH_SCREENS, ROWS, USAGE_BOARD } from './layout.js';
+import { AREAS, BREAK_TABLES, CONTRACTOR_DESK_XS, DEPARTMENTS, LEAD_DESK, LOUNGE_FURNITURE, OFFICE_BOUNDS, OFFICE_ELEVATOR, RESEARCH_SCREENS, ROWS, USAGE_BOARD, CHRIS_DESK } from './layout.js';
 import { box, boxGeo, glass, matte } from './materials.js';
 import {
   armchair, bookshelf, coffeeTable, desk, fridge, kitchen, plant, roundTable, serverRack, sofa, stool,
@@ -255,6 +255,35 @@ export function buildOffice(scene, layout) {
     k.prop = p;
   }
   root.add(lettering('HOT DESKS', { cx: 9, cz: 20.15, w: 6, h: 1.2, color: '#858c94' }));
+
+  // Chris's exec office — waiting bots queue at the door and along the corridor.
+  const ch = AREAS.chris;
+  const chWood = canvasTexture(woodPlanks({ base: '#7a6348' }), { repeat: [2.2, 2.2] });
+  root.add(floorPlane(ch.x0, ch.x1, ch.z0, ch.z1, new THREE.MeshLambertMaterial({ map: chWood })));
+  root.add(lettering('CHRIS', { cx: (ch.x0 + ch.x1) / 2, cz: ch.z0 + 1.05, w: 4.2, h: 0.85, color: '#9a8268' }));
+  const chWall = matte('#c8c0b4');
+  for (const w of [
+    box(ch.x1 - ch.x0, WALL_H, 0.12, chWall, (ch.x0 + ch.x1) / 2, 0, ch.z0 - 0.06),
+    box(0.12, WALL_H, ch.z1 - ch.z0, chWall, ch.x0 - 0.06, 0, (ch.z0 + ch.z1) / 2),
+    box(0.12, WALL_H, ch.z1 - ch.z0, chWall, ch.x1 + 0.06, 0, (ch.z0 + ch.z1) / 2),
+  ]) {
+    w.userData.occluder = true;
+    root.add(w);
+  }
+  root.add(box(ch.x1 - ch.x0, 0.12, 0.12, '#b0a89c', (ch.x0 + ch.x1) / 2, WALL_H, ch.z0 - 0.06, { cast: false }));
+  root.add(box(ch.doorX - ch.x0 - 0.5, WALL_H, 0.12, chWall, ch.x0 + (ch.doorX - ch.x0) / 2 - 0.25, 0, ch.doorZ - 0.06));
+  root.add(box(ch.x1 - ch.doorX - 0.9, WALL_H, 0.12, chWall, ch.doorX + (ch.x1 - ch.doorX) / 2 + 0.45, 0, ch.doorZ - 0.06));
+  const chDoor = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 2.35), glass('#b4cad8', 0.16));
+  chDoor.position.set(ch.doorX, 1.18, ch.doorZ + 0.02);
+  root.add(chDoor);
+  const chPlate = signPlate('CHRIS  ·  EXEC', { w: 2.1, h: 0.34, bg: '#3d342c', fg: '#dcc9b0' });
+  chPlate.position.set(ch.doorX + 1.5, 2.25, ch.doorZ + 0.02);
+  root.add(chPlate);
+  root.add(desk({ x: CHRIS_DESK.x, z: CHRIS_DESK.z, width: 2.35, depth: 0.9, lead: true }).group);
+  root.add(armchair({ x: 25.2, z: 19.2, rot: Math.PI, color: '#6a5d52' }));
+  root.add(bookshelf({ x: 19.2, z: 20.2, w: 2.6 }));
+  root.add(tallPlant({ x: 25.8, z: 13.8 }));
+  root.add(plant({ x: 18.4, z: 19.8, size: 0.95 }));
 
   // Lobby with the elevator up to the rooftop.
   const lb = AREAS.lobby;

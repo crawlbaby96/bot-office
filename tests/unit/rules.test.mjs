@@ -26,7 +26,7 @@ test('validateStatus rejects unknown bots, states, and bad handoffs', () => {
   assert.equal(validateStatus({ botId: 'a', state: 'done', handoffTo: 'b' }, ids).value.handoffTo, 'b');
 });
 
-test('working goes stale (shown idle) after 10 minutes; other states do not', () => {
+test('working goes stale (shown idle) after 10 minutes; waiting after 48 hours; other states do not', () => {
   const now = Date.parse('2026-10-29T12:00:00Z');
   const row = (state, ago) => ({ botId: 'a', state, message: '', handoffTo: null, updatedAt: new Date(now - ago).toISOString() });
   assert.equal(effectiveStatus(row('working', 9 * MIN), now).effectiveState, 'working');
@@ -34,6 +34,9 @@ test('working goes stale (shown idle) after 10 minutes; other states do not', ()
   assert.equal(stale.effectiveState, 'idle');
   assert.equal(stale.stale, true);
   assert.equal(effectiveStatus(row('waiting', 60 * MIN), now).effectiveState, 'waiting');
+  const staleWait = effectiveStatus(row('waiting', 48 * 60 * MIN), now);
+  assert.equal(staleWait.effectiveState, 'idle');
+  assert.equal(staleWait.stale, true);
   assert.equal(effectiveStatus(row('error', 60 * MIN), now).effectiveState, 'error');
 });
 

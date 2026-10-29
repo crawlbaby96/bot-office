@@ -88,12 +88,13 @@ curl -sS -X POST "$OFFICE_URL/api/status" -H "Authorization: Bearer $OFFICE_PUSH
 | Pushed state | Where the bot is | Indicator |
 |---|---|---|
 | `working` | at its desk, typing (rooftop bots take the elevator down to a hot desk) | small green dot |
-| `waiting` | at its desk | small `?` |
+| `waiting` | walks to Chris's exec office and queues at the door | **Needs Chris** pill, `?` badge, short status line |
 | `error` | at its desk | small red dot |
 | `done` | idle spot (lounge / rooftop / lead armchair) | small ✓ |
 | `idle` or nothing pushed | idle spot | none |
 
 - A `working` status with no update for **10 minutes** is shown as idle. The tooltip says why.
+- A `waiting` status with no update for **48 hours** is shown as idle (tooltip explains). Tap **N bots need you** (or **1 bot needs you**) in the HUD to focus the camera on Chris's office.
 - `handoffTo`: the bot carries a folder to the recipient's desk (for Grok Bot, the glass corner office), drops it on the desk, then goes where its own state says. The folder stays on the recipient's desk until the recipient pushes its next status.
 - The page polls `/api/office` every 12 seconds and immediately when the tab becomes visible again.
 - **Feed warning banner**: shown only when the store can't be read, the last heartbeat failed, the heartbeat has stopped, or no status push has arrived for 45+ minutes. An idle office is normal and never triggers a warning.

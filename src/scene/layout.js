@@ -33,7 +33,11 @@ export const AREAS = {
   breakRoom: { x0: -13, x1: 1, z0: 11, z1: 21 },
   hotDesks: { x0: 3, x1: 15, z0: 11, z1: 21 },
   lobby: { x0: 17, x1: 31, z0: 11, z1: 21 },
+  /** Exec corner near the lobby; bots walk here when status is waiting (blocked on Chris). */
+  chris: { x0: 18, x1: 26.5, z0: 13, z1: 20.5, doorX: 20.5, doorZ: 12.15 },
 };
+export const CHRIS_DESK = { x: 22.4, z: 17.0 };
+export const CHRIS_FOCUS = [22, 0.75, 15.5];
 
 export const RESEARCH_SCREENS = { z: -3.3, xs: [-10.2, -6, -1.8], width: 3.4, height: 1.9, bottom: 1.05 };
 export const USAGE_BOARD = { x: 2, y: 1.05, z: -21.86, width: 7.2, height: 3.3 };
@@ -206,6 +210,49 @@ function contractorDesks() {
 
 export const isRooftopZone = (zone) => !DEPARTMENTS.some((d) => d.name === zone) && zone !== 'Lead corner office';
 
+function chrisOffice() {
+  const ch = AREAS.chris;
+  const { doorX, doorZ } = ch;
+  const enter = [[16, CORRIDOR_Z.BC], [doorX, CORRIDOR_Z.BC], [doorX, doorZ + 0.55]];
+  const { x, z } = CHRIS_DESK;
+  const desk = {
+    x,
+    z,
+    seat: spot({
+      pos: [x, z - 0.85],
+      facing: FACE_PZ,
+      pose: 'sit',
+      kind: 'chris-desk',
+      approach: [...enter, [x, z - 0.85]],
+    }),
+  };
+  const queue = [
+    [18.0, CORRIDOR_Z.BC],
+    [19.6, CORRIDOR_Z.BC],
+    [21.2, CORRIDOR_Z.BC],
+    [22.8, CORRIDOR_Z.BC],
+    [19.2, 13.4],
+    [20.8, 13.4],
+    [22.4, 13.4],
+    [19.2, 15.2],
+    [20.9, 15.2],
+    [22.5, 15.2],
+  ];
+  const waiting = queue.map(([px, pz], i) => {
+    const onCorridor = Math.abs(pz - CORRIDOR_Z.BC) < 0.05;
+    const approach = onCorridor ? [[16, CORRIDOR_Z.BC], [px, pz]] : [...enter, [px, pz]];
+    return spot({
+      pos: [px, pz],
+      facing: onCorridor ? FACE_PZ : FACE_NZ,
+      pose: 'stand',
+      kind: 'chris-wait',
+      approach,
+      tagLift: i % 3 === 1 ? 0.38 : 0,
+    });
+  });
+  return { desk, waiting, focus: CHRIS_FOCUS };
+}
+
 /**
  * Assign every roster bot a desk (own department, the lead office, or a rooftop hot desk),
  * a delivery spot for receiving handoffs, and an idle seat (lounge, lead sofa, or rooftop).
@@ -247,5 +294,6 @@ export function buildLayout(roster, leadId) {
     }
   }
 
-  return { departments, lead, hot, lounge, roof, assignments, contractors: contractorDesks() };
+  const chris = chrisOffice();
+  return { departments, lead, hot, lounge, roof, chris, assignments, contractors: contractorDesks() };
 }

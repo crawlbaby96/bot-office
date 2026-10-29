@@ -3,7 +3,7 @@ import { CORRIDOR_Z, ELEVATOR_SPOTS } from './layout.js';
 // Corridor network on the office floor: two east-west corridors joined by three north-south aisles.
 const CORRIDORS = [
   { z: CORRIDOR_Z.AB, xs: [-31, -23, -14, -6, 2, 9, 16, 19, 24, 30] },
-  { z: CORRIDOR_Z.BC, xs: [-31, -23, -14, -6, 2, 9, 16, 24, 30] },
+  { z: CORRIDOR_Z.BC, xs: [-31, -23, -14, -6, 2, 9, 16, 18, 20, 22, 24, 30] },
 ];
 const CONNECTOR_XS = [-14, 2, 16];
 
