@@ -6,7 +6,7 @@ export const PASSWORD = 'e2e-office-password';
 export const PUSH_TOKEN = 'e2e-push-token';
 export const CRON_SECRET = 'e2e-cron-secret';
 
-export async function startServer({ port = 5199, storeFile = '/tmp/office-e2e-store.json', fresh = true } = {}) {
+export async function startServer({ port = 5199, storeFile = '/tmp/office-e2e-store.json', fresh = true, env: extraEnv = {} } = {}) {
   if (fresh) rmSync(storeFile, { force: true });
   const env = {
     ...process.env,
@@ -16,6 +16,11 @@ export async function startServer({ port = 5199, storeFile = '/tmp/office-e2e-st
     CRON_SECRET,
     OFFICE_STORE_FILE: storeFile,
     DATABASE_URL: '',
+    CURSOR_API_KEY: '',
+    CURSOR_ADMIN_API_KEY: '',
+    OPENAI_ADMIN_KEY: '',
+    ANTHROPIC_ADMIN_KEY: '',
+    ...extraEnv,
   };
   const proc = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--strictPort'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
