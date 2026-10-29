@@ -216,7 +216,10 @@ async function boot() {
     const rect = world.renderer.domElement.getBoundingClientRect();
     ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(ndc, world.camera);
-    const hit = raycaster.intersectObjects([...agents.pickables(), ...contractors.pickables()], false)[0];
+    const tradeDoors = [];
+    world.scene.traverse((o) => o.userData?.tradeDoor && tradeDoors.push(o));
+    const hit = raycaster.intersectObjects([...agents.pickables(), ...contractors.pickables(), ...tradeDoors], false)[0];
+    if (hit?.object.userData?.tradeDoor) return '__trade_door__';
     const data = hit?.object.userData;
     if (data?.contractorId) return `contractor:${data.contractorId}`;
     return data?.botId ?? null;
@@ -242,6 +245,10 @@ async function boot() {
     if (!id) {
       tooltip.hidden = true;
       return;
+    }
+    if (id === '__trade_door__') {
+      tooltip.innerHTML = '<div class="tt-name">GVEGAS Gridiron</div><div class="tt-title">Trade lounge · click to enter</div>';
+      return placeTooltip(x, y);
     }
     if (id.startsWith('contractor:')) {
       const html = contractorTooltip(id.slice('contractor:'.length));
@@ -290,6 +297,10 @@ async function boot() {
   surface.addEventListener('pointerup', (e) => {
     if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) return;
     const id = pick(e.clientX, e.clientY);
+    if (id === '__trade_door__') {
+      window.location.href = '/trade';
+      return;
+    }
     if (e.pointerType !== 'mouse' || id) showTooltip(id, e.clientX, e.clientY);
   });
 

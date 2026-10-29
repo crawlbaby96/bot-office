@@ -1,4 +1,6 @@
 import './style.css';
+import { mountTradeScene } from './lounge.js';
+import { renderFeedHtml, renderSideMessages } from './feed-ui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -20,40 +22,32 @@ function renderParticipants(list) {
     return;
   }
   el.classList.remove('empty-state');
-  el.innerHTML = list.map((p) => `<li><strong>${escapeHtml(p.name)}</strong><br/><span class="muted">${escapeHtml(p.status)}</span></li>`).join('');
-}
-
-function renderMessages(messages, offers) {
-  const el = $('messages');
-  const offerById = Object.fromEntries(offers.map((o) => [o.id, o]));
-  if (!messages.length) {
-    el.innerHTML = '';
-    el.dataset.empty = 'No messages yet.';
-    el.classList.add('empty-state');
-    return;
-  }
-  el.classList.remove('empty-state');
-  el.innerHTML = messages
-    .map((m) => {
-      if (m.kind === 'offer') {
-        const o = offerById[m.body.offerId];
-        if (!o) return `<li>Offer ${escapeHtml(m.body.offerId)}</li>`;
-        return `<li class="offer-${escapeHtml(o.state)}"><strong>Offer · ${escapeHtml(o.state)}</strong><br/>Give: ${escapeHtml(JSON.stringify(o.give))}<br/>Want: ${escapeHtml(JSON.stringify(o.want))}</li>`;
-      }
-      if (m.kind === 'system') return `<li><em>${escapeHtml(m.body.text || '')}</em></li>`;
-      return `<li>${escapeHtml(m.body.text || '')}</li>`;
-    })
+  el.innerHTML = list
+    .map((p) => `<li><strong>${escapeHtml(p.name)}</strong><br/><span class="muted">${escapeHtml(p.status || 'At table')}</span></li>`)
     .join('');
 }
 
-async function poll(roomId) {
+async function poll(roomId, sceneApi) {
   const res = await fetch(`/api/trade/rooms/${encodeURIComponent(roomId)}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Room not found');
   const data = await res.json();
   $('room-line').textContent = data.room?.name || 'Trade room';
   $('updated-line').textContent = `Updated ${new Date(data.serverTime).toLocaleTimeString()}`;
-  renderParticipants(data.participants || []);
-  renderMessages(data.messages || [], data.offers || []);
+  const participants = data.participants || [];
+  renderParticipants(participants);
+  sceneApi.syncParticipants(participants);
+  const feedHtml = renderFeedHtml(data.messages || [], data.offers || [], participants);
+  sceneApi.setWallFeedHtml(feedHtml);
+  const el = $('messages');
+  const side = renderSideMessages(data.messages || [], data.offers || [], participants);
+  if (!side) {
+    el.innerHTML = '';
+    el.dataset.empty = 'No messages yet.';
+    el.classList.add('empty-state');
+  } else {
+    el.classList.remove('empty-state');
+    el.innerHTML = side;
+  }
 }
 
 async function boot() {
@@ -62,12 +56,14 @@ async function boot() {
     $('room-line').textContent = 'Missing room id in URL';
     return;
   }
-  await poll(roomId);
-  setInterval(() => poll(roomId).catch(console.warn), 4000);
+  const sceneApi = mountTradeScene($('stage'), { wallFeed: true });
+  $('loading').hidden = true;
+  await poll(roomId, sceneApi);
+  setInterval(() => poll(roomId, sceneApi).catch(console.warn), 4000);
 }
 
 boot().catch((err) => {
   $('room-line').textContent = err.message;
 });
 
-window.__tradeRoom = { poll, roomIdFromPath };
+window.__tradeRoom = { roomIdFromPath };

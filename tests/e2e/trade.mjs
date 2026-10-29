@@ -65,18 +65,32 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
   lobby.on('pageerror', (e) => check('Trade lobby no page errors', false, e.message));
   const lobbyResp = await lobby.goto(`${server.url}/trade`);
   check('/trade loads without office login', lobbyResp?.status() === 200 && !lobby.url().includes('/login'), lobby.url());
-  await lobby.waitForFunction(() => window.__tradeLobby, null, { timeout: 15000 });
+  await lobby.waitForFunction(() => window.__tradeLobby?.ready && document.querySelector('#stage canvas'), null, { timeout: 30000 });
   await lobby.waitForTimeout(1500);
   await shot(lobby, '11-trade-lounge.png', 'Public GVEGAS trade lounge (signed out)');
   const roomLink = lobby.locator(`a.room-link[href="${room.path}"]`);
   check('Room list shows the created room', await roomLink.count() > 0);
   await lobby.goto(`${server.url}${room.path}`, { waitUntil: 'networkidle' });
-  await lobby.waitForFunction(() => window.__tradeRoom && document.querySelector('#messages')?.textContent.includes('agreed'), null, {
-    timeout: 15000,
-  });
-  const roomText = await lobby.locator('#messages').innerText();
-  check('Public room view shows agreed offer while signed out', /agreed/i.test(roomText) && /WR/.test(roomText), roomText.slice(0, 120));
-  await shot(lobby, '11-trade-room.png', 'Public room feed after bots agreed an offer');
+  await lobby.waitForFunction(() => document.querySelector('#loading')?.hidden !== false, null, { timeout: 15000 });
+  await lobby.waitForFunction(
+    () => {
+      if (!window.__tradeRoom) return false;
+      const t =
+        document.querySelector('.trade-wall-screen')?.textContent ||
+        document.querySelector('.trade-offer-card')?.textContent ||
+        document.querySelector('#messages')?.textContent ||
+        '';
+      return /agreed/i.test(t) && /WR/.test(t);
+    },
+    null,
+    { timeout: 20000 },
+  );
+  check('Two bots shown at the table', (await lobby.locator('.trade-tag').count()) >= 2);
+  const roomText =
+    (await lobby.locator('.trade-wall-screen, #messages').first().innerText().catch(() => '')) ||
+    (await lobby.locator('#messages').innerText());
+  check('Public room view shows agreed offer while signed out', /agreed/i.test(roomText) && /WR/.test(roomText) && !/\[\{/.test(roomText), roomText.slice(0, 160));
+  await shot(lobby, '11-trade-room.png', '3D trade room: two seated bots, agreed offer on wall screen');
   await signedOut.close();
 
   const adminPage = await browser.newPage();

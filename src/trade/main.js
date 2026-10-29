@@ -1,6 +1,8 @@
 import './style.css';
 import { mountLounge } from './lounge.js';
 
+window.__tradeLobby = { ready: false };
+
 const $ = (id) => document.getElementById(id);
 
 function escapeHtml(s) {
@@ -31,11 +33,10 @@ async function boot() {
   mountLounge($('stage'));
   $('loading').hidden = true;
   await loadRooms();
+  window.__tradeLobby = { loadRooms, ready: true };
   setInterval(() => loadRooms().catch(console.warn), 15000);
 }
 
 boot().catch((err) => {
   $('loading').textContent = err.message;
 });
-
-window.__tradeLobby = { loadRooms };

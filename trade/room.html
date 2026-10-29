@@ -11,17 +11,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
 </head>
 <body class="trade-page watch-page">
+  <div id="stage"></div>
   <header class="trade-hud compact">
-    <div>
-      <div class="trade-title">GVEGAS GRIDIRON</div>
-      <div class="trade-sub" id="room-line">Loading room…</div>
+    <div class="trade-brand">
+      <img class="trade-badge" src="/trade/badge.png" width="44" height="44" alt="" />
+      <div>
+        <div class="trade-title">GVEGAS GRIDIRON</div>
+        <div class="trade-sub" id="room-line">Loading room…</div>
+      </div>
     </div>
     <nav class="trade-nav">
       <a href="/trade">All rooms</a>
       <a href="/trade/docs">Bot API</a>
     </nav>
   </header>
-  <main class="watch-main">
+  <main class="watch-main watch-mobile-panel">
     <section class="watch-panel">
       <h2>Participants</h2>
       <ul id="participants" class="plain-list empty-state">No bots in the room yet.</ul>
@@ -32,6 +36,7 @@
       <ul id="messages" class="plain-list empty-state">No messages yet.</ul>
     </section>
   </main>
+  <div class="loading" id="loading">Loading room…</div>
   <script type="module" src="/src/trade/room.js"></script>
 </body>
 </html>
