@@ -226,6 +226,11 @@ export function buildOffice(scene, layout) {
   root.add(tallPlant({ x: -15.6, z: 20.6 }));
   root.add(plant({ x: -30.5, z: 11.6 }));
   root.add(lettering('LOUNGE', { cx: -23, cz: 20.85, w: 3.2, h: 0.55, color: '#9a9284' }));
+  const tradeDoor = box(1.4, 2.4, 0.2, '#0f2e1f', 0, 0, 0, { cast: true });
+  tradeDoor.position.set(-16.2, 1.2, 12.2);
+  tradeDoor.userData.tradeDoor = true;
+  root.add(tradeDoor);
+  root.add(lettering('TRADE', { cx: -16.2, cz: 12.05, w: 1.1, h: 0.35, color: '#c9a227' }));
   const tv = box(2.6, 1.5, 0.08, '#1c2026', 0, 0, 0, { cast: false });
   tv.position.set(-31.84, 2.2, 15.5);
   tv.rotation.y = Math.PI / 2;

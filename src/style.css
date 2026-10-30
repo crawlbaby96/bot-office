@@ -92,9 +92,17 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #c9cfd4; col
 .brand .agents-line[data-status="stale"] { color: #d6b98a; }
 
 .views { display: flex; gap: 2px; padding: 3px; }
-.views button, .simulate {
+.views button, .views .trade-door, .simulate {
   font: inherit; color: var(--ink); background: transparent; border: 0; border-radius: 7px; padding: 6px 11px; font-size: 13px; cursor: pointer;
 }
+.views .trade-door {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: #c9a227;
+  font-weight: 600;
+}
+.views .trade-door:hover { background: rgba(201, 162, 39, 0.15); }
 .views button:hover { background: rgba(255, 255, 255, 0.08); }
 .views button.active { background: rgba(130, 160, 190, 0.28); }
 .views .signout { margin: 0; display: flex; }

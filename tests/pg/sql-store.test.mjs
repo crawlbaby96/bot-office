@@ -11,7 +11,7 @@ const sql = url ? postgres(url, { onnotice: () => {} }) : null;
 
 before(async () => {
   if (!sql) return;
-  await sql.unsafe('DROP TABLE IF EXISTS bot_status, status_events, usage_readings, feed_heartbeats, cloud_agent_snapshots, provider_usage_readings, schema_migrations');
+  await sql.unsafe('DROP TABLE IF EXISTS trade_offers, trade_messages, trade_participants, trade_room_keys, trade_rooms, bot_status, status_events, usage_readings, feed_heartbeats, cloud_agent_snapshots, provider_usage_readings, schema_migrations');
   execFileSync(process.execPath, ['scripts/db-migrate.mjs'], { env: { ...process.env, DATABASE_URL: url }, stdio: 'pipe' });
 });
 
@@ -22,7 +22,9 @@ test('migration is idempotent and tables start empty', { skip: !sql && 'TEST_DAT
   assert.match(out, /skip\s+001_init\.sql/);
   assert.match(out, /skip\s+002_cloud_agents\.sql/);
   assert.match(out, /skip\s+003_provider_usage\.sql/);
-  for (const t of ['bot_status', 'status_events', 'usage_readings', 'feed_heartbeats', 'cloud_agent_snapshots', 'provider_usage_readings']) {
+  assert.match(out, /apply\s+004_trade_room\.sql|skip\s+004_trade_room\.sql/);
+  assert.match(out, /apply\s+005_trade_public_rooms\.sql|skip\s+005_trade_public_rooms\.sql/);
+  for (const t of ['bot_status', 'status_events', 'usage_readings', 'feed_heartbeats', 'cloud_agent_snapshots', 'provider_usage_readings', 'trade_rooms']) {
     const [{ n }] = await sql.unsafe(`SELECT count(*)::int AS n FROM ${t}`);
     assert.equal(n, 0, `${t} has no seed rows`);
   }

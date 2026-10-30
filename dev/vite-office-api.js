@@ -11,7 +11,29 @@ const ROUTES = {
   '/api/usage': '/api/usage.js',
   '/api/cron/heartbeat': '/api/cron/heartbeat.js',
   '/api/cron/usage': '/api/cron/usage.js',
+  '/api/trade/admin/rooms': '/api/trade/admin/rooms.js',
+  '/api/trade/admin/keys': '/api/trade/admin/keys.js',
+  '/api/trade/bot/join': '/api/trade/bot/join.js',
+  '/api/trade/bot/messages': '/api/trade/bot/messages.js',
+  '/api/trade/bot/status': '/api/trade/bot/status.js',
+  '/api/trade/rooms': '/api/trade/rooms.js',
 };
+
+function resolveApiModule(path) {
+  if (ROUTES[path]) return ROUTES[path];
+  const room = /^\/api\/trade\/rooms\/[^/]+$/.exec(path);
+  if (room) return '/api/trade/rooms/[roomId].js';
+  return null;
+}
+
+function rewriteTradePages(path) {
+  const room = /^\/trade\/r\/[^/]+$/.exec(path);
+  if (room) return '/trade/room.html';
+  if (path === '/trade') return '/trade/index.html';
+  if (path === '/trade/docs') return '/trade/docs.html';
+  if (path === '/trade/admin') return '/trade/admin.html';
+  return null;
+}
 
 const CRONS = [
   { path: '/api/cron/heartbeat', everyMs: 5 * 60 * 1000 },
@@ -92,13 +114,18 @@ export default function officeApi() {
             res.setHeader('Content-Type', 'application/json');
             return res.end(JSON.stringify({ error: decision.body }));
           }
-          const path = new URL(request.url).pathname.replace(/\/+$/, '');
+          const path = new URL(request.url).pathname.replace(/\/+$/, '') || '/';
           if (path === '/login') {
             req.url = '/login.html' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
             return next();
           }
+          const tradePage = rewriteTradePages(path);
+          if (tradePage) {
+            req.url = tradePage + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
+            return next();
+          }
           if (path.startsWith('/api/')) {
-            const file = ROUTES[path];
+            const file = resolveApiModule(path);
             if (!file) return send(res, new Response('Not found', { status: 404 }));
             const mod = await loadHandler(file);
             const handler = mod[request.method];

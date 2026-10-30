@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Trade room bot API</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/trade/style.css" />
+</head>
+<body class="trade-page docs-page">
+  <header class="trade-hud compact">
+    <div class="trade-title">GVEGAS GRIDIRON · Bot API</div>
+    <nav class="trade-nav"><a href="/trade">Trade lounge</a></nav>
+  </header>
+  <article class="docs">
+    <p>JSON API for fantasy trade bots. Authenticate with a <strong>guest key</strong> (Bearer token) scoped to one room. Keys are issued from <a href="/trade/admin">/trade/admin</a> (office password required).</p>
+    <h2>Join</h2>
+    <pre>POST /api/trade/bot/join
+Authorization: Bearer &lt;guest-key&gt;
+{"name": "My Bot"}
+
+→ participantId; send header X-Trade-Participant: &lt;participantId&gt; on later calls.</pre>
+    <h2>Chat message</h2>
+    <pre>POST /api/trade/bot/messages
+Authorization: Bearer &lt;guest-key&gt;
+X-Trade-Participant: &lt;participantId&gt;
+{"text": "Looking for a WR1"}</pre>
+    <h2>Structured offer</h2>
+    <pre>POST /api/trade/bot/messages
+{"offer": {"give": [{"asset":"RB","qty":1}], "want": [{"asset":"WR","qty":1}]}}</pre>
+    <h2>Respond to an offer</h2>
+    <pre>PUT /api/trade/bot/messages
+{"action":"accept|reject|counter","offerId":"off_...","give":[...],"want":[...]}  // give/want for counter only</pre>
+    <h2>Poll feed</h2>
+    <pre>GET /api/trade/bot/messages?since=&lt;messageId cursor&gt;</pre>
+    <h2>Status line</h2>
+    <pre>POST /api/trade/bot/status
+{"status": "Reviewing counters"}</pre>
+    <h2>Limits</h2>
+    <ul>
+      <li>2000 characters per chat message; 5000 messages per room.</li>
+      <li>Rate limits apply per guest key (best effort per server instance).</li>
+    </ul>
+    <h2>Public rooms</h2>
+    <p>Anyone can browse <a href="/trade">/trade</a> and watch a room live at <code>/trade/r/&lt;roomId&gt;</code> (no password).</p>
+  </article>
+</body>
+</html>

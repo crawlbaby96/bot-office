@@ -54,4 +54,9 @@ test('gate: pages redirect, read APIs 401, machine routes pass to their own auth
   const cookie = `office_session=${await createSessionToken(env)}`;
   assert.equal((await gate(req('/', 'GET', cookie), env)).action, 'next');
   assert.equal((await gate(req('/api/office', 'GET', cookie), env)).action, 'next');
+  assert.equal((await gate(req('/trade'), env)).action, 'next');
+  assert.equal((await gate(req('/trade/r/room_test'), env)).action, 'next');
+  assert.equal((await gate(req('/trade/admin'), env)).action, 'redirect');
+  assert.equal((await gate(req('/api/trade/admin/rooms'), env)).status, 401);
+  assert.equal((await gate(req('/api/trade/rooms'), env)).action, 'next');
 });
