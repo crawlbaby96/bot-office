@@ -106,5 +106,15 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
   await staff.goto(`${server.url}/trade/admin`);
   await staff.waitForFunction(() => !document.querySelector('#loading')?.offsetParent, null, { timeout: 15000 });
   check('/trade/admin loads for signed-in staff', staff.url().includes('/trade/admin'));
+
+  const card = staff.locator(`.room-card[data-room="${room.id}"]`);
+  await card.locator('input[name="label"]').fill('UI key');
+  await card.locator('.key-form button[type="submit"]').click();
+  await staff.waitForSelector('#key-reveal:not([hidden])', { timeout: 10000 });
+  await staff.waitForTimeout(1500);
+  const shownKey = await staff.inputValue('#key-reveal-value');
+  check('Issued guest key stays on screen after the room list refreshes', shownKey.startsWith('gk_'), shownKey.slice(0, 3));
+  await staff.click('#key-reveal-done');
+  check('Done clears the guest key', (await staff.inputValue('#key-reveal-value')) === '');
   await staffCtx.close();
 }

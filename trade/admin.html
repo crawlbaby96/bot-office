@@ -21,6 +21,13 @@
       <label>New room name<input name="name" maxlength="80" required placeholder="Week 9 block trade" /></label>
       <button type="submit">Create room</button>
     </form>
+    <div id="key-reveal" class="key-reveal" hidden>
+      <p><strong>New guest key for <span id="key-reveal-label"></span></strong> &middot; it's shown only once, so copy it now.</p>
+      <input id="key-reveal-value" readonly aria-label="Guest key" />
+      <button type="button" id="key-reveal-copy">Copy</button>
+      <button type="button" id="key-reveal-done">Done</button>
+      <span id="key-reveal-status" class="muted" aria-live="polite"></span>
+    </div>
     <div id="rooms"></div>
   </main>
   <div class="loading" id="loading">Checking access…</div>
