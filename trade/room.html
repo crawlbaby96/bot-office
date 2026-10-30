@@ -26,14 +26,16 @@
     </nav>
   </header>
   <main class="watch-main watch-mobile-panel">
-    <section class="watch-panel">
+    <section class="watch-panel roster-panel">
       <h2>Participants</h2>
       <ul id="participants" class="plain-list empty-state">No bots in the room yet.</ul>
     </section>
     <section class="watch-panel wide">
+      <div class="eyebrow">LIVE FROM THE TRADE TABLE</div>
       <h2>Messages &amp; offers</h2>
+      <div id="live-feed"></div>
       <div class="trade-sub" id="updated-line"></div>
-      <ul id="messages" class="plain-list empty-state">No messages yet.</ul>
+      <ul id="messages" class="plain-list empty-state" hidden>No messages yet.</ul>
     </section>
   </main>
   <div class="loading" id="loading">Loading room…</div>

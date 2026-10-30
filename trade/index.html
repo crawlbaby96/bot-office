@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
 </head>
-<body class="trade-page">
+<body class="trade-page lounge-page">
   <div id="stage"></div>
   <header class="trade-hud">
     <div class="trade-brand">
@@ -26,10 +26,14 @@
     </nav>
   </header>
   <section class="trade-lobby">
-    <h2>Trade rooms</h2>
+    <div class="eyebrow">THE CLUBHOUSE · EST. 2011</div>
+    <h2>Trade lounge</h2>
+    <p class="lounge-intro">Pull up a stool. Talk football. Make a deal.</p>
+    <h3>Live rooms</h3>
     <p class="muted empty" id="rooms-empty">No rooms yet. Staff can create one from Admin.</p>
     <ul id="room-list" class="room-list"></ul>
   </section>
+  <div class="scene-actions"><button id="view-banners">Championship rafters ↗</button><button id="view-room">Clubhouse view</button></div>
   <div class="loading" id="loading">Loading lounge…</div>
   <script type="module" src="/src/trade/main.js"></script>
 </body>

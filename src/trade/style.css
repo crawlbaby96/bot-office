@@ -361,3 +361,73 @@
 .offer-agreed { color: #7dffb2; }
 .offer-open { color: #9ee5ff; }
 .offer-rejected { color: #ff9a8b; }
+
+/* Public clubhouse: the scene and live desk each get their own space. */
+.lounge-page, .watch-page { background: #132e29; }
+.lounge-page .trade-hud, .watch-page .trade-hud {
+  height: 72px; box-sizing: border-box; align-items: center; padding: 10px 22px;
+  background: #102e28; border-bottom: 1px solid #ba9452;
+}
+.lounge-page .trade-title, .watch-page .trade-title { font-size: 28px; letter-spacing: .08em; color: #f2cf7e; }
+.lounge-page .trade-nav a, .watch-page .trade-nav a { color: #b6e0d9; }
+.lounge-page #stage, .watch-page #stage { position: fixed; inset: 72px 310px 0 0; }
+.trade-lobby, .watch-page .watch-main.watch-mobile-panel {
+  box-sizing: border-box; position: fixed; display: flex; flex-direction: column; gap: 22px;
+  top: 72px; right: 0; bottom: 0; left: auto; width: 310px; max-height: none;
+  margin: 0; padding: 28px 22px; border: 0; border-left: 1px solid #476052;
+  border-radius: 0; background: #17352f; overflow: auto;
+}
+.trade-lobby { display: block; }
+.eyebrow { color: #b5cbbd; font-size: 10px; font-weight: 700; letter-spacing: .16em; margin-bottom: 12px; }
+.trade-lobby h2, .watch-panel h2 { font-family: Georgia, serif; color: #f6d68a; font-size: 29px; font-weight: 400; margin: 0 0 14px; }
+.trade-lobby h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; margin: 30px 0 12px; color: #d9e5d9; }
+.lounge-intro { font: 16px/1.6 Georgia, serif; color: #d1d9ca; }
+.room-link { background: #24473e; border: 1px solid #647a58; padding: 15px 12px; }
+.room-link span { overflow-wrap: anywhere; font-size: 10px; line-height: 1.6; }
+.room-link strong { font-size: 14px; }
+.watch-panel { padding: 0; background: none; border: 0; border-radius: 0; }
+.roster-panel { order: 2; border-top: 1px solid #496154; padding-top: 20px; }
+.roster-panel h2 { font-size: 21px; }
+#participants { display: flex; flex-wrap: wrap; gap: 12px; }
+#participants li { font-size: 12px; }
+.trade-wall-screen { box-sizing: border-box; width: 100%; max-height: none; padding: 0; border: 0; box-shadow: none; background: none; font-size: 12px; pointer-events: auto; }
+.trade-wall-scroll { max-height: none; overflow: visible; }
+.trade-wall-line { line-height: 1.6; margin-bottom: 12px; overflow-wrap: anywhere; }
+.trade-offer-card { background: #203f48; border: 1px solid #6a8a82; padding: 13px 12px 30px; }
+.trade-offer-card header { color: #f6d68a; }
+#updated-line { margin-top: 16px; font-size: 10px; }
+.trade-tag { font-size: 13px; padding: 6px 10px; border: 1px solid #edd18b; background: #123a31f5; box-shadow: 0 3px 8px #0005; }
+.trade-tag-name { color: #ffe6a3; }
+.trade-tag-status { font-size: 9px; color: #d3e7d4; }
+.scene-actions { position: fixed; left: 22px; bottom: 18px; z-index: 3; display: flex; gap: 8px; }
+.scene-actions button { border: 1px solid #a68d5a; border-radius: 5px; padding: 9px 12px; color: #f6dfa8; background: #16382ff0; cursor: pointer; font-size: 11px; }
+.scene-actions button:hover { background: #2b5747; }
+@media (max-width: 800px) {
+  .lounge-page, .watch-page { overflow: auto; }
+  .lounge-page .trade-hud, .watch-page .trade-hud { position: relative; height: 78px; padding: 10px 12px; gap: 6px; }
+  .lounge-page .trade-title, .watch-page .trade-title { font-size: 21px; }
+  .trade-brand { gap: 8px; }
+  .trade-badge, .trade-hud.compact .trade-badge { width: 35px; height: 35px; }
+  .trade-sub { font-size: 10px; }
+  .trade-nav { flex-direction: column; gap: 5px; font-size: 11px; white-space: nowrap; }
+  .lounge-page #stage, .watch-page #stage { position: relative; inset: auto; height: 470px; min-height: 0; }
+  .trade-lobby, .watch-page .watch-main.watch-mobile-panel { position: relative; inset: auto; width: 100%; height: auto; padding: 22px; margin: 0; border-left: 0; border-top: 1px solid #a78c52; border-radius: 20px 20px 0 0; }
+  .trade-lobby h2, .watch-panel h2 { font-size: 25px; }
+  .trade-lobby h3 { margin-top: 18px; }
+  .lounge-intro { margin: 8px 0; }
+  .scene-actions { position: absolute; top: 508px; bottom: auto; left: 12px; }
+  .scene-actions button { padding: 8px; font-size: 10px; }
+  .trade-tag { font-size: 11px; padding: 4px 7px; }
+}
+@media (min-width: 801px) {
+  .lounge-page.banners-view #stage { right: 0; }
+  .banners-view .trade-lobby { display: none; }
+}
+@media (max-width: 800px) {
+  .lounge-page .trade-hud, .watch-page .trade-hud { position: absolute; top: 0; }
+  .lounge-page #stage, .watch-page #stage { margin-top: 78px; }
+}
+@media (min-width: 801px) {
+  .trade-tag { font-size: 18px; padding: 8px 12px; }
+  .trade-tag-status { font-size: 11px; }
+}

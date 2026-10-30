@@ -30,10 +30,12 @@ async function loadRooms() {
 }
 
 async function boot() {
-  mountLounge($('stage'));
+  const sceneApi = mountLounge($('stage'));
+  $('view-banners').addEventListener('click', () => sceneApi.focusBanners());
+  $('view-room').addEventListener('click', () => sceneApi.resetView());
   $('loading').hidden = true;
   await loadRooms();
-  window.__tradeLobby = { loadRooms, ready: true };
+  window.__tradeLobby = { loadRooms, ready: true, focusBanners: sceneApi.focusBanners };
   setInterval(() => loadRooms().catch(console.warn), 15000);
 }
 
