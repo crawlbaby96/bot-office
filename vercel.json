@@ -5,7 +5,7 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/trade/r/:roomId", "destination": "/trade/room.html" }
+    { "source": "/trade/r/:roomId", "destination": "/trade/room" }
   ],
   "functions": {
     "api/**/*.js": {
