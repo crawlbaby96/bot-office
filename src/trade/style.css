@@ -253,7 +253,7 @@
   font-size: 0.82rem;
 }
 
-.room-card code, .key-once {
+.room-card code {
   display: block;
   margin-top: 6px;
   padding: 6px;
@@ -431,3 +431,8 @@
   .trade-tag { font-size: 18px; padding: 8px 12px; }
   .trade-tag-status { font-size: 11px; }
 }
+
+.key-reveal { margin: 1rem 0; padding: 0.75rem 1rem; border: 1px solid #d4af37; border-radius: 8px; background: rgba(212, 175, 55, 0.08); display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.key-reveal[hidden] { display: none; }
+.key-reveal p { flex-basis: 100%; margin: 0; }
+.key-reveal input { flex: 1 1 22rem; font-family: ui-monospace, monospace; }

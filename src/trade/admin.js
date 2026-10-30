@@ -54,12 +54,9 @@ function renderRooms(rooms) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ roomId, label }),
       });
-      const once = document.createElement('div');
-      once.className = 'key-once';
-      once.textContent = `Guest key (copy now): ${out.guestKey}`;
-      form.append(once);
       form.reset();
       await refreshRooms();
+      showKey(label, out.guestKey);
     });
   });
 
@@ -90,12 +87,37 @@ function renderRooms(rooms) {
   });
 }
 
+// The key lives outside #rooms so re-rendering the room list can't wipe it.
+function showKey(label, key) {
+  $('key-reveal-label').textContent = label;
+  $('key-reveal-value').value = key;
+  $('key-reveal-status').textContent = '';
+  $('key-reveal').hidden = false;
+  $('key-reveal-value').select();
+}
+
+function hideKey() {
+  $('key-reveal-value').value = '';
+  $('key-reveal').hidden = true;
+}
+
 async function refreshRooms() {
   const data = await api('/api/trade/admin/rooms');
   renderRooms(data.rooms);
 }
 
 async function boot() {
+  $('key-reveal-copy').addEventListener('click', async () => {
+    const input = $('key-reveal-value');
+    try {
+      await navigator.clipboard.writeText(input.value);
+    } catch {
+      input.select();
+      document.execCommand('copy');
+    }
+    $('key-reveal-status').textContent = 'Copied';
+  });
+  $('key-reveal-done').addEventListener('click', hideKey);
   $('create-room').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = new FormData(e.target).get('name');
