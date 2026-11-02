@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import { chromium } from 'playwright';
 
@@ -38,6 +38,41 @@ export async function startServer({ port = 5199, storeFile = '/tmp/office-e2e-st
   }
   proc.kill();
   throw new Error(`dev server did not start:\n${log}`);
+}
+
+export async function startPreviewServer({ port = 5200, storeFile = '/tmp/office-e2e-store.json', env: extraEnv = {} } = {}) {
+  execFileSync('npm', ['run', 'build'], { encoding: 'utf8', stdio: 'pipe' });
+  const env = {
+    ...process.env,
+    PORT: String(port),
+    OFFICE_PASSWORD: PASSWORD,
+    OFFICE_PUSH_TOKEN: PUSH_TOKEN,
+    CRON_SECRET,
+    OFFICE_STORE_FILE: storeFile,
+    DATABASE_URL: '',
+    CURSOR_API_KEY: '',
+    CURSOR_ADMIN_API_KEY: '',
+    OPENAI_ADMIN_KEY: '',
+    ANTHROPIC_ADMIN_KEY: '',
+    OFFICE_DEV_HEARTBEAT_ON_START: '0',
+    ...extraEnv,
+  };
+  const proc = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--strictPort', '--port', String(port)], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  let log = '';
+  proc.stdout.on('data', (d) => (log += d));
+  proc.stderr.on('data', (d) => (log += d));
+  const url = `http://localhost:${port}`;
+  for (let i = 0; i < 100; i++) {
+    try {
+      const r = await fetch(`${url}/login`);
+      if (r.ok) return { url, proc, log: () => log, env };
+    } catch {
+      /* not up yet */
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  proc.kill();
+  throw new Error(`preview server did not start:\n${log}`);
 }
 
 export async function launch() {

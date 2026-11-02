@@ -9,6 +9,7 @@ import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { CRON_SECRET, launch, login, PUSH_TOKEN, startServer, waitSettled } from './lib.mjs';
 import { runTradeE2e } from './trade.mjs';
+import { runTradeBuildE2e } from './trade-build.mjs';
 import { startMockProviders } from './mock-providers.mjs';
 
 const OUT = process.argv[2] || '/opt/cursor/artifacts/office';
@@ -463,6 +464,8 @@ try {
   await mobile.close();
 
   await runTradeE2e({ server, check, shot, page, browser, sessionCookie: session.value, login });
+
+  await runTradeBuildE2e({ check, shot, browser, sessionCookie: session.value, storeFile: '/tmp/office-e2e-store.json' });
 
   check('No browser console errors', summary.consoleErrors.length === 0, summary.consoleErrors.slice(0, 3).join(' / '));
 } catch (err) {
