@@ -59,6 +59,7 @@ test('gate: pages redirect, read APIs 401, machine routes pass to their own auth
   assert.equal((await gate(req('/trade/admin'), env)).action, 'redirect');
   assert.equal((await gate(req('/api/trade/admin/rooms'), env)).status, 401);
   assert.equal((await gate(req('/api/trade/rooms'), env)).action, 'next');
+  assert.equal((await gate(req('/api/trade/lounge'), env)).action, 'next');
 });
 
 test('gate: anonymous visitors cannot load office-only hashed assets', async () => {

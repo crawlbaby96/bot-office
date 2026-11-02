@@ -16,9 +16,8 @@ try {
   const page = await ctx.newPage();
   await login(page, server.url);
   const session = (await ctx.cookies()).find((c) => c.name === 'office_session');
-  await ctx.close(); // Stop the office animation before rendering the bar.
+  await ctx.close();
   await runTradeE2e({ server, check, shot, page, browser, sessionCookie: session.value, login });
-  // Banner close-up: pages expose window.__tradeLobby.focusBanners() if implemented
   const p = await (await browser.newContext()).newPage();
   await p.goto(`${server.url}/trade`);
   await p.waitForFunction(() => window.__tradeLobby?.ready && document.querySelector('#stage canvas'), null, { timeout: 30000 });
@@ -30,10 +29,9 @@ try {
   const mobile = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
   await mobile.goto(`${server.url}/trade`);
   await mobile.waitForFunction(() => window.__tradeLobby?.ready);
-  await mobile.locator('.room-link').first().click();
-  await mobile.waitForFunction(() => document.querySelectorAll('.trade-tag').length >= 2);
+  await mobile.waitForFunction(() => document.querySelectorAll('.trade-tag').length >= 2, null, { timeout: 20000 });
   await mobile.waitForTimeout(1500);
-  await shot(mobile, '13-room-mobile.png');
+  await shot(mobile, '13-lounge-mobile.png');
   const clear = await mobile.evaluate(() => {
     const sheet = document.querySelector('.watch-main').getBoundingClientRect();
     return [...document.querySelectorAll('.trade-tag')].every(el => {

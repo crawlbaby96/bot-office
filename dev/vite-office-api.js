@@ -22,6 +22,7 @@ const ROUTES = {
   '/api/trade/bot/messages': '/api/trade/bot/messages.js',
   '/api/trade/bot/status': '/api/trade/bot/status.js',
   '/api/trade/rooms': '/api/trade/rooms.js',
+  '/api/trade/lounge': '/api/trade/lounge.js',
 };
 
 function resolveApiModule(path) {
@@ -33,7 +34,7 @@ function resolveApiModule(path) {
 
 function rewriteTradePages(path) {
   const room = /^\/trade\/r\/[^/]+$/.exec(path);
-  if (room) return '/trade/room.html';
+  if (room) return '/trade/index.html';
   if (path === '/trade') return '/trade/index.html';
   if (path === '/trade/docs') return '/trade/docs.html';
   if (path === '/trade/admin') return '/trade/admin.html';
