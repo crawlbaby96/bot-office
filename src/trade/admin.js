@@ -16,78 +16,30 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 
-function renderRooms(rooms) {
-  const el = $('rooms');
-  if (!rooms.length) {
-    el.innerHTML = '<p class="muted empty">No trade rooms yet.</p>';
+function renderKeys(keys) {
+  const el = $('keys');
+  if (!keys.length) {
+    el.innerHTML = '<li class="muted">No keys yet.</li>';
     return;
   }
-  el.innerHTML = rooms
+  el.innerHTML = keys
     .map(
-      (room) => `
-    <div class="room-card" data-room="${escapeHtml(room.id)}">
-      <strong>${escapeHtml(room.name)}</strong>
-      <div>Public: <a href="${escapeHtml(room.path)}">${escapeHtml(location.origin + room.path)}</a></div>
-      <button type="button" class="delete-room">Delete room</button>
-      <form class="key-form">
-        <input name="label" placeholder="Key label (e.g. Forge bot)" maxlength="80" required />
-        <button type="submit">Issue guest key</button>
-      </form>
-      <ul class="keys">${room.keys
-        .map(
-          (k) =>
-            `<li>${escapeHtml(k.label)} · ${k.revoked ? 'revoked' : 'active'} ${k.revoked ? '' : `<button type="button" data-revoke="${escapeHtml(k.id)}">Revoke</button>`}</li>`,
-        )
-        .join('') || '<li class="muted">No keys yet</li>'}</ul>
-    </div>`,
+      (k) =>
+        `<li>${escapeHtml(k.label)} · ${k.revoked ? 'revoked' : 'active'} ${k.revoked ? '' : `<button type="button" data-revoke="${escapeHtml(k.id)}">Revoke</button>`}</li>`,
     )
     .join('');
-
-  el.querySelectorAll('.key-form').forEach((form) => {
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const card = form.closest('.room-card');
-      const roomId = card.dataset.room;
-      const label = new FormData(form).get('label');
-      const out = await api('/api/trade/admin/keys', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ roomId, label }),
-      });
-      form.reset();
-      await refreshRooms();
-      showKey(label, out.guestKey);
-    });
-  });
-
   el.querySelectorAll('[data-revoke]').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      const roomId = btn.closest('.room-card').dataset.room;
       await api('/api/trade/admin/keys', {
         method: 'DELETE',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ roomId, keyId: btn.dataset.revoke }),
+        body: JSON.stringify({ keyId: btn.dataset.revoke }),
       });
-      await refreshRooms();
-    });
-  });
-
-  el.querySelectorAll('.delete-room').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const card = btn.closest('.room-card');
-      const roomId = card.dataset.room;
-      if (!confirm(`Delete room ${roomId}?`)) return;
-      await api('/api/trade/admin/rooms', {
-        method: 'DELETE',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ roomId }),
-      });
-      await refreshRooms();
+      await refresh();
     });
   });
 }
 
-// The key lives outside #rooms so re-rendering the room list can't wipe it.
 function showKey(label, key) {
   $('key-reveal-label').textContent = label;
   $('key-reveal-value').value = key;
@@ -101,9 +53,13 @@ function hideKey() {
   $('key-reveal').hidden = true;
 }
 
-async function refreshRooms() {
+async function refresh() {
   const data = await api('/api/trade/admin/rooms');
-  renderRooms(data.rooms);
+  const lounge = data.lounge;
+  $('lounge-line').textContent = lounge
+    ? `Public lounge: ${lounge.name} · ${location.origin}${lounge.path}`
+    : '';
+  renderKeys(data.keys || []);
 }
 
 async function boot() {
@@ -118,18 +74,19 @@ async function boot() {
     $('key-reveal-status').textContent = 'Copied';
   });
   $('key-reveal-done').addEventListener('click', hideKey);
-  $('create-room').addEventListener('submit', async (e) => {
+  $('key-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = new FormData(e.target).get('name');
-    await api('/api/trade/admin/rooms', {
+    const label = new FormData(e.target).get('label');
+    const out = await api('/api/trade/admin/keys', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ label }),
     });
     e.target.reset();
-    await refreshRooms();
+    await refresh();
+    showKey(label, out.guestKey);
   });
-  await refreshRooms();
+  await refresh();
   $('loading').hidden = true;
 }
 

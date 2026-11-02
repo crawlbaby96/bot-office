@@ -44,27 +44,32 @@ test('guest key hash matches and revoked keys fail', async () => {
   assert.equal(await matchGuestKey([{ ...row, revokedAt: new Date().toISOString() }], plain), null);
 });
 
-test('room isolation via guest keys', async () => {
+test('guest keys from different legacy rooms share one lounge', async () => {
   resetStoreCache();
   resetTradeStoreCache();
   resetRateLimitsForTests();
   const store = createFileStore({ file: null });
   const trade = store.trade;
-  const roomA = await trade.createRoom('Room A');
-  const roomB = await trade.createRoom('Room B');
-  const { plaintext: keyA } = await trade.createKey(roomA.id, 'bot-a');
-  const { plaintext: keyB } = await trade.createKey(roomB.id, 'bot-b');
+  const lounge = await trade.createRoom('Trade talks');
+  const legacy = await trade.createRoom('Old room');
+  const { plaintext: keyA } = await trade.createKey(lounge.id, 'bot-a');
+  const { plaintext: keyB } = await trade.createKey(legacy.id, 'bot-b');
 
   const rows = await trade.listActiveKeyRows();
   const matchA = await matchGuestKey(rows, keyA);
   const matchB = await matchGuestKey(rows, keyB);
-  assert.equal(matchA.roomId, roomA.id);
-  assert.equal(matchB.roomId, roomB.id);
+  assert.equal(matchA.roomId, lounge.id);
+  assert.equal(matchB.roomId, legacy.id);
 
-  const partA = await trade.joinParticipant(roomA.id, 'Bot A');
-  await trade.appendChat(roomA.id, partA.id, 'hello A');
-  const msgsB = await trade.readMessages(roomB.id, 0);
-  assert.equal(msgsB.length, 0);
-  const msgsA = await trade.readMessages(roomA.id, 0);
-  assert.ok(msgsA.some((m) => m.body.text === 'hello A'));
+  const { resolveLoungeRoomId } = await import('../../lib/trade/lounge-room.js');
+  const loungeId = await resolveLoungeRoomId(trade);
+  assert.equal(loungeId, lounge.id);
+
+  const partA = await trade.joinParticipant(loungeId, 'Bot A');
+  await trade.appendChat(loungeId, partA.id, 'hello lounge');
+  const partB = await trade.joinParticipant(loungeId, 'Bot B');
+  await trade.appendChat(loungeId, partB.id, 'same table');
+  const msgs = await trade.readMessages(loungeId, 0);
+  assert.ok(msgs.some((m) => m.body.text === 'hello lounge'));
+  assert.ok(msgs.some((m) => m.body.text === 'same table'));
 });

@@ -17,7 +17,6 @@ export default defineConfig(({ mode }) => {
         input: {
           main: 'index.html',
           trade: 'trade/index.html',
-          tradeRoom: 'trade/room.html',
           tradeAdmin: 'trade/admin.html',
           tradeDocs: 'trade/docs.html',
         },

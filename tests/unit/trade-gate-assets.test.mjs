@@ -14,9 +14,9 @@ test('gate: production trade asset manifest allows shared Vite chunks (e.g. loun
   resetTradePublicAssetCache();
   const manifest = [...getTradePublicAssetPaths()];
   assert.ok(manifest.length > 0, 'trade-public-assets.json should list hashed /assets URLs');
-  const lounge = manifest.find((p) => /\/assets\/lounge-/.test(p));
-  assert.ok(lounge, `expected lounge chunk in manifest, got: ${manifest.join(', ')}`);
-  assert.equal((await gate(req(lounge), env)).action, 'next');
+  const tradeChunk = manifest.find((p) => /\/assets\/trade-/.test(p));
+  assert.ok(tradeChunk, `expected trade entry chunk in manifest, got: ${manifest.join(', ')}`);
+  assert.equal((await gate(req(tradeChunk), env)).action, 'next');
   assert.equal((await gate(req('/assets/main-DW2nRet1.js'), env)).action, 'redirect');
   assert.equal((await gate(req('/assets/tradeAdmin-CQzCTYcn.js'), env)).action, 'redirect');
 });
@@ -25,7 +25,7 @@ test('gate: manifest matches every /assets/ URL in public trade HTML', async () 
   resetTradePublicAssetCache();
   const root = join(import.meta.dirname, '../..');
   const assetRe = /(?:src|href)="(\/assets\/[^"?#]+)"/g;
-  const htmlPaths = ['dist/trade/index.html', 'dist/trade/room.html', 'dist/trade/docs.html'];
+  const htmlPaths = ['dist/trade/index.html', 'dist/trade/docs.html'];
   const fromHtml = new Set();
   for (const rel of htmlPaths) {
     const html = readFileSync(join(root, rel), 'utf8');

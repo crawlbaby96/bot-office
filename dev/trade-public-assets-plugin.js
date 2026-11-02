@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** HTML entry points for the password-free trade lounge (not staff admin). */
-const PUBLIC_TRADE_HTML = ['trade/index.html', 'trade/room.html', 'trade/docs.html'];
+const PUBLIC_TRADE_HTML = ['trade/index.html', 'trade/docs.html'];
 
 const HTML_ASSET_RE = /(?:src|href)="(\/assets\/[^"?#]+)"/g;
 const FROM_IMPORT_RE = /(?:from|import)\("\.\/([^"]+)"/g;

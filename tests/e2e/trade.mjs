@@ -1,4 +1,4 @@
-// Trade room e2e — public lounge, signed-out room view, admin gated, bot keys unchanged.
+// Trade lounge e2e — public lounge, legacy room URL, admin gated, bot keys.
 export async function runTradeE2e({ server, check, shot, browser, sessionCookie }) {
   const adminDenied = await fetch(`${server.url}/api/trade/admin/rooms`);
   check('Trade admin API rejects signed-out requests', adminDenied.status === 401, String(adminDenied.status));
@@ -15,12 +15,12 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
       return j;
     });
 
-  const roomRes = await admin('/api/trade/admin/rooms', 'POST', { name: 'E2E GVEGAS room' });
-  const room = roomRes.room;
-  check('Trade admin creates a room', !!room.id && room.path.startsWith('/trade/r/'), room.id);
+  const loungeRes = await admin('/api/trade/admin/rooms', 'GET');
+  const lounge = loungeRes.lounge;
+  check('Trade admin exposes the shared lounge', !!lounge?.id && lounge.path === '/trade', lounge?.id);
 
-  const keyA = await admin('/api/trade/admin/keys', 'POST', { roomId: room.id, label: 'Bot Alpha' });
-  const keyB = await admin('/api/trade/admin/keys', 'POST', { roomId: room.id, label: 'Bot Beta' });
+  const keyA = await admin('/api/trade/admin/keys', 'POST', { label: 'Bot Alpha' });
+  const keyB = await admin('/api/trade/admin/keys', 'POST', { label: 'Bot Beta' });
   check('Trade admin issues two guest keys', keyA.guestKey.startsWith('gk_') && keyB.guestKey.startsWith('gk_'));
 
   const bot = (key, path, method, body, participantId) =>
@@ -40,7 +40,7 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
 
   const joinA = await bot(keyA.guestKey, '/api/trade/bot/join', 'POST', { name: 'Alpha Bot' });
   const joinB = await bot(keyB.guestKey, '/api/trade/bot/join', 'POST', { name: 'Beta Bot' });
-  check('Two bots join the same room', joinA.roomId === room.id && joinB.roomId === room.id);
+  check('Two bots join the lounge', joinA.roomId === lounge.id && joinB.roomId === lounge.id);
 
   await bot(keyA.guestKey, '/api/trade/bot/messages', 'POST', { text: 'Need a WR' }, joinA.participantId);
   const offerRes = await bot(
@@ -62,19 +62,12 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
 
   const signedOut = await browser.newContext();
   const lobby = await signedOut.newPage();
-  lobby.on('pageerror', (e) => check('Trade lobby no page errors', false, e.message));
+  lobby.on('pageerror', (e) => check('Trade lounge no page errors', false, e.message));
   const lobbyResp = await lobby.goto(`${server.url}/trade`);
   check('/trade loads without office login', lobbyResp?.status() === 200 && !lobby.url().includes('/login'), lobby.url());
   await lobby.waitForFunction(() => window.__tradeLobby?.ready && document.querySelector('#stage canvas'), null, { timeout: 30000 });
-  await lobby.waitForTimeout(1500);
-  await shot(lobby, '11-trade-lounge.png', 'Public GVEGAS trade lounge (signed out)');
-  const roomLink = lobby.locator(`a.room-link[href="${room.path}"]`);
-  check('Room list shows the created room', await roomLink.count() > 0);
-  await lobby.goto(`${server.url}${room.path}`, { waitUntil: 'networkidle' });
-  await lobby.waitForFunction(() => document.querySelector('#loading')?.hidden !== false, null, { timeout: 15000 });
   await lobby.waitForFunction(
     () => {
-      if (!window.__tradeRoom) return false;
       const t =
         document.querySelector('.trade-wall-screen')?.textContent ||
         document.querySelector('.trade-offer-card')?.textContent ||
@@ -85,12 +78,17 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
     null,
     { timeout: 20000 },
   );
+  await lobby.waitForTimeout(1500);
+  await shot(lobby, '11-trade-lounge.png', 'Public GVEGAS trade lounge (signed out)');
   check('Two bots shown at the table', (await lobby.locator('.trade-tag').count()) >= 2);
-  const roomText =
+  const loungeText =
     (await lobby.locator('.trade-wall-screen, #messages').first().innerText().catch(() => '')) ||
     (await lobby.locator('#messages').innerText());
-  check('Public room view shows agreed offer while signed out', /agreed/i.test(roomText) && /WR/.test(roomText) && !/\[\{/.test(roomText), roomText.slice(0, 160));
-  await shot(lobby, '11-trade-room.png', '3D trade room: two seated bots, agreed offer on wall screen');
+  check('Public lounge shows agreed offer while signed out', /agreed/i.test(loungeText) && /WR/.test(loungeText) && !/\[\{/.test(loungeText), loungeText.slice(0, 160));
+
+  const legacy = await lobby.goto(`${server.url}/trade/r/${lounge.id}`, { waitUntil: 'networkidle' });
+  await lobby.waitForFunction(() => window.__tradeLobby?.ready, null, { timeout: 15000 });
+  check('Legacy /trade/r URL serves the lounge', legacy?.status() === 200, lobby.url());
   await signedOut.close();
 
   const adminPage = await browser.newPage();
@@ -99,21 +97,20 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
   await adminPage.close();
 
   const staffCtx = await browser.newContext();
-  await staffCtx.addCookies([
-    { name: 'office_session', value: sessionCookie, url: `${server.url}/` },
-  ]);
+  await staffCtx.addCookies([{ name: 'office_session', value: sessionCookie, url: `${server.url}/` }]);
   const staff = await staffCtx.newPage();
   await staff.goto(`${server.url}/trade/admin`);
   await staff.waitForFunction(() => !document.querySelector('#loading')?.offsetParent, null, { timeout: 15000 });
   check('/trade/admin loads for signed-in staff', staff.url().includes('/trade/admin'));
+  await staff.waitForTimeout(800);
+  await shot(staff, '11-trade-admin.png', 'Simplified trade admin (guest keys only)');
 
-  const card = staff.locator(`.room-card[data-room="${room.id}"]`);
-  await card.locator('input[name="label"]').fill('UI key');
-  await card.locator('.key-form button[type="submit"]').click();
+  await staff.locator('#key-form input[name="label"]').fill('UI key');
+  await staff.locator('#key-form button[type="submit"]').click();
   await staff.waitForSelector('#key-reveal:not([hidden])', { timeout: 10000 });
   await staff.waitForTimeout(1500);
   const shownKey = await staff.inputValue('#key-reveal-value');
-  check('Issued guest key stays on screen after the room list refreshes', shownKey.startsWith('gk_'), shownKey.slice(0, 3));
+  check('Issued guest key stays on screen after the key list refreshes', shownKey.startsWith('gk_'), shownKey.slice(0, 3));
   await staff.click('#key-reveal-done');
   check('Done clears the guest key', (await staff.inputValue('#key-reveal-value')) === '');
   await staffCtx.close();

@@ -16,10 +16,11 @@
     <nav class="trade-nav"><a href="/trade">Public lounge</a></nav>
   </header>
   <main class="trade-admin-panel">
-    <p class="muted">Create or delete rooms and issue one-time guest keys for bots. Office password required.</p>
-    <form id="create-room">
-      <label>New room name<input name="name" maxlength="80" required placeholder="Week 9 block trade" /></label>
-      <button type="submit">Create room</button>
+    <p class="muted">Issue one-time guest keys for trade bots. Office password required.</p>
+    <p class="muted" id="lounge-line"></p>
+    <form id="key-form" class="key-form">
+      <input name="label" placeholder="Key label (e.g. Forge bot)" maxlength="80" required />
+      <button type="submit">Issue guest key</button>
     </form>
     <div id="key-reveal" class="key-reveal" hidden>
       <p><strong>New guest key for <span id="key-reveal-label"></span></strong> &middot; it's shown only once, so copy it now.</p>
@@ -28,7 +29,8 @@
       <button type="button" id="key-reveal-done">Done</button>
       <span id="key-reveal-status" class="muted" aria-live="polite"></span>
     </div>
-    <div id="rooms"></div>
+    <h2>Guest keys</h2>
+    <ul id="keys" class="plain-list"></ul>
   </main>
   <div class="loading" id="loading">Checking access…</div>
   <script type="module" src="/src/trade/admin.js"></script>

@@ -1,5 +1,6 @@
 import './style.css';
-import { mountLounge } from './lounge.js';
+import { mountTradeScene } from './lounge.js';
+import { renderFeedHtml, renderSideMessages } from './feed-ui.js';
 
 window.__tradeLobby = { ready: false };
 
@@ -9,36 +10,54 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 
-async function loadRooms() {
-  const res = await fetch('/api/trade/rooms', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Could not load rooms');
-  const data = await res.json();
-  const list = $('room-list');
-  const empty = $('rooms-empty');
-  if (!data.rooms.length) {
-    list.innerHTML = '';
-    empty.hidden = false;
+function renderParticipants(list) {
+  const el = $('participants');
+  if (!list.length) {
+    el.innerHTML = '';
+    el.dataset.empty = 'No bots in the lounge yet.';
+    el.classList.add('empty-state');
     return;
   }
-  empty.hidden = true;
-  list.innerHTML = data.rooms
-    .map(
-      (r) =>
-        `<li><a class="room-link" href="${escapeHtml(r.path)}"><strong>${escapeHtml(r.name)}</strong><span class="muted">Live feed · ${escapeHtml(r.id)}</span></a></li>`,
-    )
+  el.classList.remove('empty-state');
+  el.innerHTML = list
+    .map((p) => `<li><strong>${escapeHtml(p.name)}</strong><br/><span class="muted">${escapeHtml(p.status || 'At table')}</span></li>`)
     .join('');
 }
 
+async function poll(sceneApi) {
+  const res = await fetch('/api/trade/lounge', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Could not load lounge');
+  const data = await res.json();
+  $('room-line').textContent = data.lounge?.name || data.room?.name || 'Trade lounge';
+  $('updated-line').textContent = `Updated ${new Date(data.serverTime).toLocaleTimeString()}`;
+  const participants = data.participants || [];
+  renderParticipants(participants);
+  sceneApi.syncParticipants(participants);
+  const feedHtml = renderFeedHtml(data.messages || [], data.offers || [], participants);
+  sceneApi.setWallFeedHtml(feedHtml);
+  const el = $('messages');
+  const side = renderSideMessages(data.messages || [], data.offers || [], participants);
+  if (!side) {
+    el.innerHTML = '';
+    el.dataset.empty = 'No messages yet.';
+    el.classList.add('empty-state');
+  } else {
+    el.classList.remove('empty-state');
+    el.innerHTML = side;
+  }
+}
+
 async function boot() {
-  const sceneApi = mountLounge($('stage'));
+  const sceneApi = mountTradeScene($('stage'), { wallFeed: true });
   $('view-banners').addEventListener('click', () => sceneApi.focusBanners());
   $('view-room').addEventListener('click', () => sceneApi.resetView());
   $('loading').hidden = true;
-  await loadRooms();
-  window.__tradeLobby = { loadRooms, ready: true, focusBanners: sceneApi.focusBanners };
-  setInterval(() => loadRooms().catch(console.warn), 15000);
+  await poll(sceneApi);
+  window.__tradeLobby = { ready: true, focusBanners: sceneApi.focusBanners, refresh: () => poll(sceneApi) };
+  setInterval(() => poll(sceneApi).catch(console.warn), 4000);
 }
 
 boot().catch((err) => {
+  $('room-line').textContent = err.message;
   $('loading').textContent = err.message;
 });

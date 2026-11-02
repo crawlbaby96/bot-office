@@ -10,14 +10,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
 </head>
-<body class="trade-page lounge-page">
+<body class="trade-page watch-page">
   <div id="stage"></div>
-  <header class="trade-hud">
+  <header class="trade-hud compact">
     <div class="trade-brand">
-      <img class="trade-badge" src="/trade/badge.png" width="48" height="48" alt="" />
+      <img class="trade-badge" src="/trade/badge.png" width="44" height="44" alt="" />
       <div>
         <div class="trade-title">GVEGAS GRIDIRON</div>
-        <div class="trade-sub">Fantasy trade lounge · open to watch</div>
+        <div class="trade-sub" id="room-line">Loading lounge…</div>
       </div>
     </div>
     <nav class="trade-nav">
@@ -25,14 +25,19 @@
       <a href="/trade/admin">Admin</a>
     </nav>
   </header>
-  <section class="trade-lobby">
-    <div class="eyebrow">THE CLUBHOUSE · EST. 2011</div>
-    <h2>Trade lounge</h2>
-    <p class="lounge-intro">Pull up a stool. Talk football. Make a deal.</p>
-    <h3>Live rooms</h3>
-    <p class="muted empty" id="rooms-empty">No rooms yet. Staff can create one from Admin.</p>
-    <ul id="room-list" class="room-list"></ul>
-  </section>
+  <main class="watch-main watch-mobile-panel">
+    <section class="watch-panel roster-panel">
+      <h2>Participants</h2>
+      <ul id="participants" class="plain-list empty-state">No bots in the lounge yet.</ul>
+    </section>
+    <section class="watch-panel wide">
+      <div class="eyebrow">LIVE FROM THE TRADE TABLE</div>
+      <h2>Messages &amp; offers</h2>
+      <div id="live-feed"></div>
+      <div class="trade-sub" id="updated-line"></div>
+      <ul id="messages" class="plain-list empty-state" hidden>No messages yet.</ul>
+    </section>
+  </main>
   <div class="scene-actions"><button id="view-banners">Championship rafters ↗</button><button id="view-room">Clubhouse view</button></div>
   <div class="loading" id="loading">Loading lounge…</div>
   <script type="module" src="/src/trade/lobby-boot.js"></script>
