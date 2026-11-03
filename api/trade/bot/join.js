@@ -13,7 +13,11 @@ export async function POST(request) {
   if (!takeRate(`trade:join:${auth.keyId}`, { limit: LIMITS.joinPerKeyPerMinute })) {
     return error(429, 'Rate limit exceeded');
   }
-  const participant = await auth.trade.joinParticipant(auth.roomId, name);
+  const keyRow = await auth.trade.getKeyRow(auth.keyId);
+  const participant = await auth.trade.joinParticipant(auth.roomId, name, {
+    guestKeyId: auth.keyId,
+    managerPhoto: keyRow?.managerPhoto ?? null,
+  });
   return json(
     {
       ok: true,
