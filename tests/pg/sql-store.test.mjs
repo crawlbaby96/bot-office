@@ -24,8 +24,6 @@ test('migration is idempotent and tables start empty', { skip: !sql && 'TEST_DAT
   assert.match(out, /skip\s+003_provider_usage\.sql/);
   assert.match(out, /apply\s+004_trade_room\.sql|skip\s+004_trade_room\.sql/);
   assert.match(out, /apply\s+005_trade_public_rooms\.sql|skip\s+005_trade_public_rooms\.sql/);
-  assert.match(out, /apply\s+006_trade_participant_presence\.sql|skip\s+006_trade_participant_presence\.sql/);
-  assert.match(out, /apply\s+007_trade_manager_avatars\.sql|skip\s+007_trade_manager_avatars\.sql/);
   for (const t of ['bot_status', 'status_events', 'usage_readings', 'feed_heartbeats', 'cloud_agent_snapshots', 'provider_usage_readings', 'trade_rooms']) {
     const [{ n }] = await sql.unsafe(`SELECT count(*)::int AS n FROM ${t}`);
     assert.equal(n, 0, `${t} has no seed rows`);

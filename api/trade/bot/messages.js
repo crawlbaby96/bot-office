@@ -1,12 +1,12 @@
 import { error, json } from '../../../lib/http.js';
-import { participantHeader, readBotJson, resolveGuestAuth, touchParticipantCheckIn } from '../../../lib/trade/bot-auth.js';
+import { participantHeader, readBotJson, resolveGuestAuth } from '../../../lib/trade/bot-auth.js';
 import { canRespondToOffer } from '../../../lib/trade/offers.js';
 import { LIMITS } from '../../../lib/trade/limits.js';
 
 async function requireParticipant(request, auth) {
   const participantId = participantHeader(request);
   if (!participantId) return { err: error(400, 'X-Trade-Participant header is required after join') };
-  const participant = await auth.trade.touchParticipant(auth.roomId, participantId);
+  const participant = await auth.trade.getParticipant(participantId, auth.roomId);
   if (!participant) return { err: error(403, 'Participant not found in this room') };
   return { participantId, participant };
 }
@@ -14,12 +14,11 @@ async function requireParticipant(request, auth) {
 export async function GET(request) {
   const auth = await resolveGuestAuth(request);
   if (auth.err) return auth.err;
-  await touchParticipantCheckIn(request, auth);
   const url = new URL(request.url);
   const since = Math.max(0, Number(url.searchParams.get('since') || 0) || 0);
   const messages = await auth.trade.readMessages(auth.roomId, since);
   const offers = await auth.trade.listOffers(auth.roomId);
-  const participants = await auth.trade.listVisibleParticipants(auth.roomId);
+  const participants = await auth.trade.listParticipants(auth.roomId);
   const cursor = messages.length ? messages[messages.length - 1].id : since;
   return json({ roomId: auth.roomId, since, cursor, messages, offers, participants });
 }

@@ -60,16 +60,6 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
   );
   check('Bots agree an offer', agreed.offer.state === 'agreed', agreed.offer.state);
 
-  const chrisPhoto =
-    loungeRes.managers?.find((m) => m.name === 'Chris Rawlings')?.photo || '/trade/managers/chris-avatar.png';
-  const corbinPhoto =
-    loungeRes.managers?.find((m) => m.name.includes('Corbin'))?.photo || '/trade/managers/corbin-avatar.png';
-  await admin('/api/trade/admin/participants', 'PUT', { participantId: joinA.participantId, managerPhoto: chrisPhoto });
-  await admin('/api/trade/admin/participants', 'PUT', { participantId: joinB.participantId, managerPhoto: corbinPhoto });
-
-  const avatarProbe = await fetch(`${server.url}${chrisPhoto}`);
-  check('Manager avatar PNG is public without office cookie', avatarProbe.status === 200, String(avatarProbe.status));
-
   const signedOut = await browser.newContext();
   const lobby = await signedOut.newPage();
   lobby.on('pageerror', (e) => check('Trade lounge no page errors', false, e.message));
@@ -89,27 +79,8 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
     { timeout: 20000 },
   );
   await lobby.waitForTimeout(1500);
-  await lobby.waitForFunction(
-    () => document.querySelectorAll('.trade-participant-avatar, .trade-tag-avatar').length >= 2,
-    null,
-    { timeout: 15000 },
-  );
-  await shot(lobby, '11-trade-lounge.png', 'Public GVEGAS trade lounge with manager avatars (signed out)');
+  await shot(lobby, '11-trade-lounge.png', 'Public GVEGAS trade lounge (signed out)');
   check('Two bots shown at the table', (await lobby.locator('.trade-tag').count()) >= 2);
-  check('Lounge shows manager avatars on bots', (await lobby.locator('.trade-participant-avatar, .trade-tag-avatar').count()) >= 2);
-
-  await admin('/api/trade/admin/participants', 'POST', { participantId: joinB.participantId });
-  await lobby.waitForFunction(
-    () => window.__tradeLobby?.refresh && window.__tradeLobby.refresh(),
-    null,
-    { timeout: 5000 },
-  ).catch(() => {});
-  await lobby.waitForTimeout(4500);
-  check('After admin remove, one fewer bot tag', (await lobby.locator('.trade-tag').count()) >= 1);
-
-  await bot(keyB.guestKey, '/api/trade/bot/messages', 'GET', null, joinB.participantId);
-  await lobby.waitForTimeout(4500);
-  check('Removed bot reappears after check-in poll', (await lobby.locator('.trade-tag').count()) >= 2);
   const loungeText =
     (await lobby.locator('.trade-wall-screen, #messages').first().innerText().catch(() => '')) ||
     (await lobby.locator('#messages').innerText());
@@ -131,9 +102,8 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
   await staff.goto(`${server.url}/trade/admin`);
   await staff.waitForFunction(() => !document.querySelector('#loading')?.offsetParent, null, { timeout: 15000 });
   check('/trade/admin loads for signed-in staff', staff.url().includes('/trade/admin'));
-  await staff.waitForSelector('.participants-table', { timeout: 10000 });
   await staff.waitForTimeout(800);
-  await shot(staff, '11-trade-admin-participants.png', 'Trade admin: lounge bots, manager pickers, remove');
+  await shot(staff, '11-trade-admin.png', 'Simplified trade admin (guest keys only)');
 
   await staff.locator('#key-form input[name="label"]').fill('UI key');
   await staff.locator('#key-form button[type="submit"]').click();

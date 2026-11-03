@@ -1,6 +1,6 @@
 import './style.css';
 import { mountTradeScene } from './lounge.js';
-import { renderFeedHtml, renderSideMessages, participantAvatarHtml } from './feed-ui.js';
+import { renderFeedHtml, renderSideMessages } from './feed-ui.js';
 
 window.__tradeLobby = { ready: false };
 
@@ -20,10 +20,7 @@ function renderParticipants(list) {
   }
   el.classList.remove('empty-state');
   el.innerHTML = list
-    .map(
-      (p) =>
-        `<li>${participantAvatarHtml(p)}<strong>${escapeHtml(p.name)}</strong><br/><span class="muted">${escapeHtml(p.status || 'At table')}</span></li>`,
-    )
+    .map((p) => `<li><strong>${escapeHtml(p.name)}</strong><br/><span class="muted">${escapeHtml(p.status || 'At table')}</span></li>`)
     .join('');
 }
 
