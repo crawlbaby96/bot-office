@@ -3,6 +3,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ROOF_Y, USAGE_BOARD } from './layout.js';
 import { setMaxAnisotropy } from './textures.js';
+import {
+  bindWebGLRendererLifecycle,
+  clearStageFallback,
+  mountStageFallback,
+  tryWebGLRenderer,
+  WEBGL_FALLBACK_HINT,
+} from './webgl.js';
 
 const VIEWS = {
   office: { target: [0.5, 0, 1.5], dir: [0.1, 0.64, 0.76], fitWidth: 70, fitHeight: 50, portrait: { target: [0, 0, -6], dir: [0.05, 0.86, 0.5] } },
@@ -13,22 +20,11 @@ const VIEWS = {
 };
 
 export function createWorld(container) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  // Always render at native device resolution; quality fallbacks drop effects, never resolution.
-  renderer.setPixelRatio(window.devicePixelRatio || 1);
-  renderer.setSize(container.clientWidth, container.clientHeight);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = 1.0;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  container.appendChild(renderer.domElement);
-  setMaxAnisotropy(renderer.capabilities.getMaxAnisotropy());
-
-  const labels = new CSS2DRenderer();
-  labels.setSize(container.clientWidth, container.clientHeight);
-  labels.domElement.className = 'labels';
-  container.appendChild(labels.domElement);
+  let renderer = null;
+  let labels = null;
+  let disposeWebGL = null;
+  let webglAvailable = false;
+  let started = false;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 1, 1400);
@@ -51,14 +47,81 @@ export function createWorld(container) {
   sun.shadow.normalBias = 0.03;
   scene.add(sun, sun.target);
 
-  const controls = new OrbitControls(camera, labels.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.12;
-  controls.screenSpacePanning = true;
-  controls.maxPolarAngle = Math.PI * 0.47;
-  controls.minDistance = 4;
-  controls.maxDistance = 190;
-  controls.zoomToCursor = true;
+  let controls = null;
+
+  const quality = {
+    shadows: true,
+    fps: null,
+    pixelRatio: window.devicePixelRatio || 1,
+    devicePixelRatio: window.devicePixelRatio || 1,
+  };
+
+  function showFallback() {
+    webglAvailable = false;
+    mountStageFallback(container, {
+      hint: WEBGL_FALLBACK_HINT,
+      onRetry: () => retryWebGL(),
+    });
+  }
+
+  function teardownWebGL() {
+    disposeWebGL?.();
+    disposeWebGL = null;
+    if (renderer?.domElement?.parentElement === container) renderer.domElement.remove();
+    if (labels?.domElement?.parentElement === container) labels.domElement.remove();
+    renderer = null;
+    labels = null;
+    controls = null;
+  }
+
+  function initWebGL() {
+    renderer = tryWebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    if (!renderer) {
+      showFallback();
+      return false;
+    }
+    webglAvailable = true;
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.NeutralToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.prepend(renderer.domElement);
+    setMaxAnisotropy(renderer.capabilities.getMaxAnisotropy());
+
+    labels = new CSS2DRenderer();
+    labels.setSize(container.clientWidth, container.clientHeight);
+    labels.domElement.className = 'labels';
+    container.appendChild(labels.domElement);
+
+    controls = new OrbitControls(camera, labels.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.12;
+    controls.screenSpacePanning = true;
+    controls.maxPolarAngle = Math.PI * 0.47;
+    controls.minDistance = 4;
+    controls.maxDistance = 190;
+    controls.zoomToCursor = true;
+
+    quality.pixelRatio = renderer.getPixelRatio();
+    disposeWebGL = bindWebGLRendererLifecycle(renderer, {
+      onLost: () => showFallback(),
+      onRestored: () => retryWebGL(),
+    });
+    resize();
+    return true;
+  }
+
+  function retryWebGL() {
+    teardownWebGL();
+    if (initWebGL()) clearStageFallback(container);
+  }
+
+  if (!initWebGL()) {
+    /* HUD and feed still work; 3D interactions are no-ops until WebGL succeeds. */
+  }
 
   function viewPose(name) {
     const aspect = container.clientWidth / Math.max(1, container.clientHeight);
@@ -79,15 +142,38 @@ export function createWorld(container) {
     const pose = viewPose(name);
     if (instant) {
       camera.position.copy(pose.position);
-      controls.target.copy(pose.target);
-      controls.update();
+      controls?.target.copy(pose.target);
+      controls?.update();
       tween = null;
       return;
     }
-    tween = { from: camera.position.clone(), fromT: controls.target.clone(), to: pose.position, toT: pose.target, t: 0, dur: 1.1 };
+    tween = { from: camera.position.clone(), fromT: controls?.target.clone() ?? pose.target.clone(), to: pose.position, toT: pose.target, t: 0, dur: 1.1 };
+  }
+
+  let samples = [];
+  let checked = false;
+  function trackFps(dt) {
+    if (!webglAvailable || checked) return;
+    samples.push(dt);
+    if (samples.length < 90) return;
+    const recent = samples.slice(30);
+    const fps = recent.length / recent.reduce((a, b) => a + b, 0);
+    quality.fps = Math.round(fps);
+    checked = true;
+    if (fps < 28 && quality.shadows) setShadows(false);
+  }
+  function setShadows(on) {
+    if (!renderer) return;
+    quality.shadows = on;
+    renderer.shadowMap.enabled = on;
+    sun.castShadow = on;
+    scene.traverse((o) => {
+      if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true;
+    });
   }
 
   function resize() {
+    if (!webglAvailable || !renderer || !labels) return;
     const w = container.clientWidth;
     const h = container.clientHeight;
     camera.aspect = w / h;
@@ -100,66 +186,63 @@ export function createWorld(container) {
   }
   window.addEventListener('resize', resize);
 
-  // Adaptive quality: if frames are slow after warm-up, turn shadows off. Resolution is never reduced.
-  const quality = { shadows: true, fps: null, pixelRatio: renderer.getPixelRatio(), devicePixelRatio: window.devicePixelRatio || 1 };
-  let samples = [];
-  let checked = false;
-  function trackFps(dt) {
-    if (checked) return;
-    samples.push(dt);
-    if (samples.length < 90) return;
-    const recent = samples.slice(30);
-    const fps = recent.length / recent.reduce((a, b) => a + b, 0);
-    quality.fps = Math.round(fps);
-    checked = true;
-    if (fps < 28 && quality.shadows) setShadows(false);
-  }
-  function setShadows(on) {
-    quality.shadows = on;
-    renderer.shadowMap.enabled = on;
-    sun.castShadow = on;
-    scene.traverse((o) => {
-      if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true;
-    });
-  }
-
   const onFrame = [];
   const clock = new THREE.Clock();
   let elapsed = 0;
   function frame() {
+    if (!started) return;
     const dt = Math.min(clock.getDelta(), 0.1);
     elapsed += dt;
     trackFps(dt);
-    if (tween) {
+    if (tween && controls) {
       tween.t += dt / tween.dur;
       const k = tween.t >= 1 ? 1 : 1 - Math.pow(1 - tween.t, 3);
       camera.position.lerpVectors(tween.from, tween.to, k);
       controls.target.lerpVectors(tween.fromT, tween.toT, k);
       if (tween.t >= 1) tween = null;
     }
-    controls.update();
+    controls?.update();
     for (const f of onFrame) f(dt, elapsed);
-    renderer.render(scene, camera);
-    labels.render(scene, camera);
+    if (webglAvailable && renderer && labels) {
+      renderer.render(scene, camera);
+      labels.render(scene, camera);
+    }
     requestAnimationFrame(frame);
   }
 
   return {
-    renderer,
+    get renderer() {
+      return renderer;
+    },
     scene,
     camera,
-    controls,
-    labels,
+    get controls() {
+      return controls;
+    },
+    get labels() {
+      return labels;
+    },
     quality,
+    get webglAvailable() {
+      return webglAvailable;
+    },
     goTo,
     setShadows,
     onFrame,
+    retryWebGL,
     start() {
+      if (started) return;
+      started = true;
       clock.start();
       requestAnimationFrame(frame);
     },
     get tweening() {
       return tween != null;
+    },
+    dispose() {
+      window.removeEventListener('resize', resize);
+      teardownWebGL();
+      clearStageFallback(container);
     },
   };
 }

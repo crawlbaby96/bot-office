@@ -75,7 +75,13 @@ export async function runTradeE2e({ server, check, shot, browser, sessionCookie 
   lobby.on('pageerror', (e) => check('Trade lounge no page errors', false, e.message));
   const lobbyResp = await lobby.goto(`${server.url}/trade`);
   check('/trade loads without office login', lobbyResp?.status() === 200 && !lobby.url().includes('/login'), lobby.url());
-  await lobby.waitForFunction(() => window.__tradeLobby?.ready && document.querySelector('#stage canvas'), null, { timeout: 30000 });
+  await lobby.waitForFunction(
+    () =>
+      window.__tradeLobby?.ready &&
+      (document.querySelector('#stage canvas') || document.querySelector('.stage-fallback')),
+    null,
+    { timeout: 30000 },
+  );
   await lobby.waitForFunction(
     () => {
       const t =
