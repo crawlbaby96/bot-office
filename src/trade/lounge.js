@@ -2,6 +2,13 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { createBotModel, applyPose } from '../scene/bot.js';
+import {
+  bindWebGLRendererLifecycle,
+  clearStageFallback,
+  mountStageFallback,
+  tryWebGLRenderer,
+  WEBGL_FALLBACK_HINT,
+} from '../scene/webgl.js';
 import { CHAMPIONS } from './champions.js';
 
 export const PALETTE = { green: 0x154f3a, gold: 0xe5b94f, blue: 0x164b78, sky: 0x46c5e8, cream: 0xffefd0 };
@@ -246,46 +253,141 @@ function createManagerPortrait(photoUrl) {
   return { obj, update(photo) { img.src = photo; } };
 }
 export function mountTradeScene(container, { wallFeed = false } = {}) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.28;
-  container.appendChild(renderer.domElement);
-  const labels = new CSS2DRenderer(); labels.domElement.className = 'trade-labels'; container.appendChild(labels.domElement);
-  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x30271f);
-  const root = buildRoomGeometry(new THREE.Group(), new THREE.TextureLoader()); scene.add(root);
-  scene.add(new THREE.HemisphereLight(0xfff1d3, 0x99816a, 2.8));
-  const sun = new THREE.DirectionalLight(0xffe1ac, 2.2); sun.position.set(0, 12, 8); scene.add(sun);
-  const fill = new THREE.DirectionalLight(0xc4e6ff, 1.2); fill.position.set(8, 8, 2); scene.add(fill);
-  const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 140);
-  // Straight-on banner portrait, behind the pendants, without wide-lens distortion.
-  const bannerCamera = new THREE.OrthographicCamera(-13.3, 13.3, 7, -7, 0.01, 30);
-  bannerCamera.position.set(0, 4.8, -5.9); bannerCamera.lookAt(0, 4.8, -7);
-  const controls = new OrbitControls(camera, labels.domElement);
-  controls.enableDamping = true; controls.enablePan = false; controls.minDistance = 7; controls.maxDistance = 55;
-  controls.maxPolarAngle = Math.PI * 0.48;
+  // Feed lives in the reserved sidebar/bottom sheet, outside the scene and badges.
+  const feedEl = document.createElement('div');
+  feedEl.className = 'trade-wall-screen';
+  if (wallFeed) document.getElementById('live-feed')?.appendChild(feedEl);
+
+  let renderer = null;
+  let labels = null;
+  let scene = null;
+  let root = null;
+  let camera = null;
+  let bannerCamera = null;
+  let controls = null;
+  let disposeWebGL = null;
+  let rafId = 0;
+  let webglAvailable = false;
   let bannersFocused = false;
+  const seated = new Map();
+
+  function showFallback() {
+    webglAvailable = false;
+    mountStageFallback(container, {
+      hint: WEBGL_FALLBACK_HINT,
+      onRetry: () => {
+        teardownWebGL();
+        if (initWebGL()) clearStageFallback(container);
+      },
+    });
+  }
+
+  function teardownWebGL() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
+    disposeWebGL?.();
+    disposeWebGL = null;
+    if (renderer?.domElement?.parentElement === container) renderer.domElement.remove();
+    if (labels?.domElement?.parentElement === container) labels.domElement.remove();
+    renderer = null;
+    labels = null;
+    scene = null;
+    root = null;
+    camera = null;
+    bannerCamera = null;
+    controls = null;
+    seated.clear();
+  }
+
+  function initWebGL() {
+    renderer = tryWebGLRenderer({ antialias: true });
+    if (!renderer) {
+      showFallback();
+      return false;
+    }
+    webglAvailable = true;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.28;
+    container.prepend(renderer.domElement);
+    labels = new CSS2DRenderer();
+    labels.domElement.className = 'trade-labels';
+    container.appendChild(labels.domElement);
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x30271f);
+    root = buildRoomGeometry(new THREE.Group(), new THREE.TextureLoader());
+    scene.add(root);
+    scene.add(new THREE.HemisphereLight(0xfff1d3, 0x99816a, 2.8));
+    const sun = new THREE.DirectionalLight(0xffe1ac, 2.2);
+    sun.position.set(0, 12, 8);
+    scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xc4e6ff, 1.2);
+    fill.position.set(8, 8, 2);
+    scene.add(fill);
+    camera = new THREE.PerspectiveCamera(43, 1, 0.1, 140);
+    bannerCamera = new THREE.OrthographicCamera(-13.3, 13.3, 7, -7, 0.01, 30);
+    bannerCamera.position.set(0, 4.8, -5.9);
+    bannerCamera.lookAt(0, 4.8, -7);
+    controls = new OrbitControls(camera, labels.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.minDistance = 7;
+    controls.maxDistance = 55;
+    controls.maxPolarAngle = Math.PI * 0.48;
+    disposeWebGL = bindWebGLRendererLifecycle(renderer, {
+      onLost: () => showFallback(),
+      onRestored: () => {
+        teardownWebGL();
+        if (initWebGL()) clearStageFallback(container);
+      },
+    });
+    frame();
+    const tick = () => {
+      rafId = requestAnimationFrame(tick);
+      if (!webglAvailable || !renderer) return;
+      controls.update();
+      const activeCamera = bannersFocused ? bannerCamera : camera;
+      renderer.render(scene, activeCamera);
+      labels.render(scene, activeCamera);
+    };
+    rafId = requestAnimationFrame(tick);
+    return true;
+  }
+
   function frame() {
-    const w = container.clientWidth, h = container.clientHeight; camera.aspect = w / h; camera.updateProjectionMatrix();
-    bannerCamera.top = 13.3 / camera.aspect; bannerCamera.bottom = -bannerCamera.top; bannerCamera.updateProjectionMatrix();
-    renderer.setSize(w, h); labels.setSize(w, h);
+    if (!webglAvailable || !renderer || !camera || !labels || !controls) return;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    bannerCamera.top = 13.3 / camera.aspect;
+    bannerCamera.bottom = -bannerCamera.top;
+    bannerCamera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    labels.setSize(w, h);
     if (bannersFocused) {
       // The orthographic camera stays between the wall and the hanging lights.
     } else if (w < 600) {
-      controls.target.set(-0.8, 2.3, 1); camera.position.set(5, 7, 14);
+      controls.target.set(-0.8, 2.3, 1);
+      camera.position.set(5, 7, 14);
     } else {
-      controls.target.set(-0.2, 2.65, 0); camera.position.set(5.2, 6.5, 12.8);
+      controls.target.set(-0.2, 2.65, 0);
+      camera.position.set(5.2, 6.5, 12.8);
     }
-    // Fit the full clubhouse across narrow canvases, retaining a perspective view.
-    if (!bannersFocused && w >= 600 && w / h < 1.25) camera.position.sub(controls.target).multiplyScalar(1.25 / (w / h)).add(controls.target);
+    if (!bannersFocused && w >= 600 && w / h < 1.25) {
+      camera.position.sub(controls.target).multiplyScalar(1.25 / (w / h)).add(controls.target);
+    }
     controls.update();
   }
-  window.addEventListener('resize', frame); frame();
-  // Feed lives in the reserved sidebar/bottom sheet, outside the scene and badges.
-  const feedEl = document.createElement('div'); feedEl.className = 'trade-wall-screen';
-  if (wallFeed) document.getElementById('live-feed')?.appendChild(feedEl);
-  const seated = new Map();
+  window.addEventListener('resize', frame);
+
+  if (!initWebGL()) {
+    /* 2D panels still work without WebGL */
+  }
+
   function syncParticipants(list) {
+    if (!webglAvailable || !root) return;
     const ids = new Set(list.slice(0, SEATS.length).map(p => p.id));
     for (const [id, entry] of seated) {
       if (!ids.has(id)) {
@@ -324,9 +426,45 @@ export function mountTradeScene(container, { wallFeed = false } = {}) {
       }
     });
   }
-  function tick() { requestAnimationFrame(tick); controls.update(); const activeCamera = bannersFocused ? bannerCamera : camera; renderer.render(scene, activeCamera); labels.render(scene, activeCamera); }
-  requestAnimationFrame(tick);
-  return { renderer, scene, camera, syncParticipants, setWallFeedHtml(html) { feedEl.innerHTML = html || '<p>No activity yet.</p>'; }, focusBanners() { bannersFocused = true; document.body.classList.add('banners-view'); frame(); }, resetView() { bannersFocused = false; document.body.classList.remove('banners-view'); frame(); } };
+  return {
+    get renderer() {
+      return renderer;
+    },
+    get scene() {
+      return scene;
+    },
+    get camera() {
+      return camera;
+    },
+    get webglAvailable() {
+      return webglAvailable;
+    },
+    syncParticipants,
+    setWallFeedHtml(html) {
+      feedEl.innerHTML = html || '<p>No activity yet.</p>';
+    },
+    focusBanners() {
+      if (!webglAvailable) return;
+      bannersFocused = true;
+      document.body.classList.add('banners-view');
+      frame();
+    },
+    resetView() {
+      if (!webglAvailable) return;
+      bannersFocused = false;
+      document.body.classList.remove('banners-view');
+      frame();
+    },
+    retryWebGL: () => {
+      teardownWebGL();
+      if (initWebGL()) clearStageFallback(container);
+    },
+    dispose: () => {
+      window.removeEventListener('resize', frame);
+      teardownWebGL();
+      clearStageFallback(container);
+    },
+  };
 }
 export function mountLounge(container) { return mountTradeScene(container); }
 export function buildLounge(scene) { const root = buildRoomGeometry(new THREE.Group(), new THREE.TextureLoader()); scene.add(root); return root; }

@@ -199,6 +199,7 @@ async function boot() {
   // Tag scale follows zoom (changes only when the camera moves, so idle frames stay identical).
   let lastScale = null;
   function updateTagScale() {
+    if (!world.controls) return;
     const d = world.camera.position.distanceTo(world.controls.target);
     const s = Math.round(Math.max(0.8, Math.min(1.25, 46 / d)) * 20) / 20;
     if (s !== lastScale) {
@@ -213,6 +214,7 @@ async function boot() {
   const ndc = new THREE.Vector2();
   let hoverId = null;
   function pick(clientX, clientY) {
+    if (!world.webglAvailable || !world.renderer) return null;
     const rect = world.renderer.domElement.getBoundingClientRect();
     ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(ndc, world.camera);
@@ -286,23 +288,25 @@ async function boot() {
     tooltip.style.left = `${Math.min(window.innerWidth - w - 8, x + pad)}px`;
     tooltip.style.top = `${Math.max(8, Math.min(window.innerHeight - h - 8, y - h - pad))}px`;
   }
-  const surface = world.labels.domElement;
-  surface.addEventListener('pointermove', (e) => {
-    if (e.pointerType !== 'mouse' || e.buttons) return;
-    showTooltip(pick(e.clientX, e.clientY), e.clientX, e.clientY);
-  });
-  surface.addEventListener('pointerleave', () => showTooltip(null));
-  let down = null;
-  surface.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
-  surface.addEventListener('pointerup', (e) => {
-    if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) return;
-    const id = pick(e.clientX, e.clientY);
-    if (id === '__trade_door__') {
-      window.location.href = '/trade';
-      return;
-    }
-    if (e.pointerType !== 'mouse' || id) showTooltip(id, e.clientX, e.clientY);
-  });
+  if (world.labels?.domElement) {
+    const surface = world.labels.domElement;
+    surface.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse' || e.buttons) return;
+      showTooltip(pick(e.clientX, e.clientY), e.clientX, e.clientY);
+    });
+    surface.addEventListener('pointerleave', () => showTooltip(null));
+    let down = null;
+    surface.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
+    surface.addEventListener('pointerup', (e) => {
+      if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) return;
+      const id = pick(e.clientX, e.clientY);
+      if (id === '__trade_door__') {
+        window.location.href = '/trade';
+        return;
+      }
+      if (e.pointerType !== 'mouse' || id) showTooltip(id, e.clientX, e.clientY);
+    });
+  }
 
   let hudTimer = 0;
   let declutterTimer = 0;
@@ -338,6 +342,7 @@ async function boot() {
   // Hooks for the Playwright verification script.
   window.__office = {
     ready: true,
+    webglAvailable: world.webglAvailable,
     refresh,
     settled: () => agents.settled() && contractors.settled() && !world.tweening,
     unsettled: () => [...agents.agents.values(), ...contractors.list()]

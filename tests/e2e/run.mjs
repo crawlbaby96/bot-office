@@ -10,6 +10,7 @@ import pixelmatch from 'pixelmatch';
 import { CRON_SECRET, launch, login, PUSH_TOKEN, startServer, waitSettled } from './lib.mjs';
 import { runTradeE2e } from './trade.mjs';
 import { runTradeBuildE2e } from './trade-build.mjs';
+import { runWebGLFallbackE2e } from './webgl-fallback.mjs';
 import { startMockProviders } from './mock-providers.mjs';
 
 const OUT = process.argv[2] || '/opt/cursor/artifacts/office';
@@ -464,6 +465,8 @@ try {
   await mobile.close();
 
   await runTradeE2e({ server, check, shot, page, browser, sessionCookie: session.value, login });
+
+  await runWebGLFallbackE2e({ server, check, shot, browser, sessionCookie: session.value, login, outDir: OUT });
 
   await runTradeBuildE2e({ check, shot, browser, sessionCookie: session.value, storeFile: '/tmp/office-e2e-store.json' });
 

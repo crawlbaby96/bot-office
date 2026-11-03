@@ -56,7 +56,13 @@ async function boot() {
   $('view-room').addEventListener('click', () => sceneApi.resetView());
   $('loading').hidden = true;
   await poll(sceneApi);
-  window.__tradeLobby = { ready: true, focusBanners: sceneApi.focusBanners, refresh: () => poll(sceneApi) };
+  window.__tradeLobby = {
+    ready: true,
+    webglAvailable: sceneApi.webglAvailable,
+    focusBanners: sceneApi.focusBanners,
+    refresh: () => poll(sceneApi),
+    retryWebGL: () => sceneApi.retryWebGL?.(),
+  };
   setInterval(() => poll(sceneApi).catch(console.warn), 4000);
 }
 
