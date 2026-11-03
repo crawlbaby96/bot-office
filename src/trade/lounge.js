@@ -205,45 +205,10 @@ function buildRoomGeometry(root, loader) {
 function createTradeTag(p) {
   const el = document.createElement('div'); el.className = 'trade-tag'; el.dataset.participantId = p.id;
   const name = document.createElement('span'); name.className = 'trade-tag-name';
-  const status = document.createElement('span'); status.className = 'trade-tag-status';
-  if (p.managerPhoto) {
-    const avatar = document.createElement('img');
-    avatar.className = 'trade-tag-avatar';
-    avatar.src = p.managerPhoto;
-    avatar.alt = '';
-    el.append(avatar);
-  }
-  el.append(name, status);
+  const status = document.createElement('span'); status.className = 'trade-tag-status'; el.append(name, status);
   const obj = new CSS2DObject(el); obj.position.y = 1.48; obj.center.set(0.5, 1);
-  const update = (p) => {
-    name.textContent = p.name;
-    status.textContent = p.status || 'At table';
-    const img = el.querySelector('.trade-tag-avatar');
-    if (p.managerPhoto) {
-      if (!img) {
-        const avatar = document.createElement('img');
-        avatar.className = 'trade-tag-avatar';
-        avatar.alt = '';
-        el.prepend(avatar);
-      }
-      el.querySelector('.trade-tag-avatar').src = p.managerPhoto;
-    } else if (img) img.remove();
-  };
-  update(p);
+  const update = (p) => { name.textContent = p.name; status.textContent = p.status || 'At table'; }; update(p);
   return { obj, update };
-}
-
-function createManagerPortrait(photoUrl) {
-  const el = document.createElement('div');
-  el.className = 'trade-manager-portrait';
-  const img = document.createElement('img');
-  img.src = photoUrl;
-  img.alt = '';
-  el.appendChild(img);
-  const obj = new CSS2DObject(el);
-  obj.position.y = 2.05;
-  obj.center.set(0.5, 0.5);
-  return { obj, update(photo) { img.src = photo; } };
 }
 export function mountTradeScene(container, { wallFeed = false } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -287,41 +252,16 @@ export function mountTradeScene(container, { wallFeed = false } = {}) {
   const seated = new Map();
   function syncParticipants(list) {
     const ids = new Set(list.slice(0, SEATS.length).map(p => p.id));
-    for (const [id, entry] of seated) {
-      if (!ids.has(id)) {
-        root.remove(entry.parts.root);
-        entry.tag.obj.element.remove();
-        entry.portrait?.obj.element.remove();
-        seated.delete(id);
-      }
-    }
+    for (const [id, entry] of seated) if (!ids.has(id)) { root.remove(entry.parts.root); entry.tag.obj.element.remove(); seated.delete(id); }
     list.slice(0, SEATS.length).forEach((p, i) => {
       let entry = seated.get(p.id);
       if (!entry) {
         const parts = createBotModel({ id: p.id, name: p.name, avatarColor: COLORS[i] }); applyPose(parts, 'sit');
         parts.root.scale.setScalar(1.8);
         const [x, z, rot] = SEATS[i]; parts.root.position.set(x, 0.2, z); parts.root.rotation.y = rot;
-        const tag = createTradeTag(p); parts.root.add(tag.obj);
-        let portrait = null;
-        if (p.managerPhoto) {
-          portrait = createManagerPortrait(p.managerPhoto);
-          parts.root.add(portrait.obj);
-        }
-        root.add(parts.root);
-        entry = { parts, tag, portrait }; seated.set(p.id, entry);
-      } else {
-        entry.tag.update(p);
-        if (p.managerPhoto) {
-          if (!entry.portrait) {
-            entry.portrait = createManagerPortrait(p.managerPhoto);
-            entry.parts.root.add(entry.portrait.obj);
-          } else entry.portrait.update(p.managerPhoto);
-        } else if (entry.portrait) {
-          entry.parts.root.remove(entry.portrait.obj);
-          entry.portrait.obj.element.remove();
-          entry.portrait = null;
-        }
-      }
+        const tag = createTradeTag(p); parts.root.add(tag.obj); root.add(parts.root);
+        entry = { parts, tag }; seated.set(p.id, entry);
+      } else entry.tag.update(p);
     });
   }
   function tick() { requestAnimationFrame(tick); controls.update(); const activeCamera = bannersFocused ? bannerCamera : camera; renderer.render(scene, activeCamera); labels.render(scene, activeCamera); }

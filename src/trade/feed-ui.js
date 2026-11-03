@@ -20,27 +20,14 @@ export function participantName(map, id) {
   return map[id]?.name || 'Unknown';
 }
 
-export function participantAvatarHtml(participant) {
-  if (!participant?.managerPhoto) return '';
-  return `<img class="trade-participant-avatar" src="${escapeHtml(participant.managerPhoto)}" alt="" />`;
-}
-
-export function participantLabelHtml(participant, map, id) {
-  const p = id ? map[id] : participant;
-  const name = participantName(map, id ?? participant?.id);
-  const avatar = p?.managerPhoto ? participantAvatarHtml(p) : '';
-  return `${avatar}<strong>${escapeHtml(name)}</strong>`;
-}
-
 export function renderOfferCard(offer, nameById) {
   const from = participantName(nameById, offer.fromParticipantId);
-  const fromAvatar = participantAvatarHtml(nameById[offer.fromParticipantId]);
   const state = offer.state || 'open';
   const stateLabel = state.charAt(0).toUpperCase() + state.slice(1);
   const gives = formatAssetList(offer.give);
   const wants = formatAssetList(offer.want);
   return `<article class="trade-offer-card offer-${escapeHtml(state)}">
-    <header><span class="trade-offer-from">${fromAvatar}${escapeHtml(from)}</span> proposes</header>
+    <header><span class="trade-offer-from">${escapeHtml(from)}</span> proposes</header>
     <div class="trade-offer-legs">
       <div><span class="label">Gives</span> ${escapeHtml(gives)}</div>
       <div><span class="label">Wants</span> ${escapeHtml(wants)}</div>
@@ -64,8 +51,8 @@ export function renderFeedHtml(messages, offers, participants) {
     if (m.kind === 'system') {
       return `<p class="trade-wall-line system"><em>${escapeHtml(m.body.text || '')}</em></p>`;
     }
-    const who = participantLabelHtml(null, nameById, m.participantId);
-    return `<p class="trade-wall-line">${who} ${escapeHtml(m.body.text || '')}</p>`;
+    const who = participantName(nameById, m.participantId);
+    return `<p class="trade-wall-line"><strong>${escapeHtml(who)}</strong> ${escapeHtml(m.body.text || '')}</p>`;
   });
   return `<div class="trade-wall-scroll">${parts.join('')}</div>`;
 }

@@ -204,40 +204,13 @@
 .trade-admin-panel {
   position: relative;
   z-index: 1;
-  max-width: 640px;
+  max-width: 520px;
   margin: 88px auto 40px;
   padding: 16px 18px;
   background: rgba(0, 49, 107, 0.82);
   border: 1px solid rgba(201, 162, 39, 0.35);
   border-radius: 10px;
 }
-
-.participants-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 8px; }
-.participants-table th, .participants-table td { text-align: left; padding: 6px 4px; border-bottom: 1px solid rgba(245, 236, 216, 0.12); vertical-align: middle; }
-.participants-table .manager-picker { max-width: 11rem; width: 100%; font-size: 0.78rem; padding: 4px; }
-.participants-table button { margin: 0; padding: 4px 8px; font-size: 0.75rem; }
-.participant-hidden-note { font-size: 0.72rem; color: var(--g-muted); }
-.participants-help { font-size: 0.8rem; margin: 6px 0 0; }
-
-.trade-participant-avatar, .trade-tag-avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  object-fit: cover;
-  vertical-align: middle;
-  margin-right: 6px;
-  border: 1px solid rgba(237, 209, 139, 0.65);
-}
-.trade-tag-avatar { width: 28px; height: 28px; display: block; margin: 0 auto 4px; }
-.trade-manager-portrait img {
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
-  object-fit: cover;
-  border: 2px solid #e5b94f;
-  box-shadow: 0 4px 12px #0008;
-}
-#participants li { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 
 .trade-admin h2, .trade-feed h2 {
   margin: 0 0 8px;
