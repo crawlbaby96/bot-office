@@ -16,6 +16,17 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 
+function formatWhen(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
+let managersCatalog = [];
+
 function renderKeys(keys) {
   const el = $('keys');
   if (!keys.length) {
@@ -34,6 +45,63 @@ function renderKeys(keys) {
         method: 'DELETE',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ keyId: btn.dataset.revoke }),
+      });
+      await refresh();
+    });
+  });
+}
+
+function managerOptions(selected) {
+  const opts = ['<option value="">— no manager —</option>'];
+  for (const m of managersCatalog) {
+    const sel = m.photo === selected ? ' selected' : '';
+    opts.push(`<option value="${escapeHtml(m.photo)}"${sel}>${escapeHtml(m.name)}</option>`);
+  }
+  return opts.join('');
+}
+
+function renderParticipants(participants) {
+  const el = $('participants-admin');
+  const active = participants.filter((p) => !p.removed);
+  if (!active.length) {
+    el.innerHTML = '<p class="muted">No lounge bots yet.</p>';
+    return;
+  }
+  el.innerHTML = `<table class="participants-table">
+    <thead><tr><th>Bot</th><th>Status</th><th>Last seen</th><th>Manager</th><th></th></tr></thead>
+    <tbody>${active
+      .map((p) => {
+        const hidden = !p.visible ? '<div class="participant-hidden-note">Hidden (idle 24h+ or removed)</div>' : '';
+        return `<tr data-participant="${escapeHtml(p.id)}">
+          <td><strong>${escapeHtml(p.name)}</strong>${hidden}</td>
+          <td>${escapeHtml(p.status || 'online')}</td>
+          <td>${escapeHtml(formatWhen(p.lastSeen))}</td>
+          <td><select class="manager-picker" data-manager-for="${escapeHtml(p.id)}">${managerOptions(p.managerPhoto)}</select></td>
+          <td><button type="button" class="remove-participant" data-remove="${escapeHtml(p.id)}">Remove</button></td>
+        </tr>`;
+      })
+      .join('')}</tbody></table>`;
+
+  el.querySelectorAll('.manager-picker').forEach((sel) => {
+    sel.addEventListener('change', async () => {
+      const participantId = sel.dataset.managerFor;
+      const managerPhoto = sel.value || null;
+      await api('/api/trade/admin/participants', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ participantId, managerPhoto }),
+      });
+      await refresh();
+    });
+  });
+
+  el.querySelectorAll('[data-remove]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Remove ${btn.closest('tr')?.querySelector('strong')?.textContent || 'this bot'} from the live lounge?`)) return;
+      await api('/api/trade/admin/participants', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ participantId: btn.dataset.remove }),
       });
       await refresh();
     });
@@ -59,7 +127,9 @@ async function refresh() {
   $('lounge-line').textContent = lounge
     ? `Public lounge: ${lounge.name} · ${location.origin}${lounge.path}`
     : '';
+  managersCatalog = data.managers || [];
   renderKeys(data.keys || []);
+  renderParticipants(data.participants || []);
 }
 
 async function boot() {
