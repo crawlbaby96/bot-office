@@ -18,6 +18,7 @@ const ROUTES = {
   '/api/cron/usage': '/api/cron/usage.js',
   '/api/trade/admin/rooms': '/api/trade/admin/rooms.js',
   '/api/trade/admin/keys': '/api/trade/admin/keys.js',
+  '/api/trade/admin/participants': '/api/trade/admin/participants.js',
   '/api/trade/bot/join': '/api/trade/bot/join.js',
   '/api/trade/bot/messages': '/api/trade/bot/messages.js',
   '/api/trade/bot/status': '/api/trade/bot/status.js',
